@@ -12,52 +12,55 @@ function toast(msg, ms=2600){ const t=$('#toast'); t.textContent=msg; t.classLis
 
 /* ================= STATE ================= */
 const S = {
-  src: 'prog',
-  mode: LS.get('mode','basic'),
+    mode: LS.get('mode','basic'),
   key: LS.get('key',''),
   files: [],          // {name, kind, slides:[{title, lines:[]}]}
   ai: false
 };
 const PH = t => `[${t}]`;
 
-/* ================= PROGRAMME SELECTS ================= */
+/* ================= LESSON SELECTS (+ свій варіант) ================= */
 const selMod=$('#selMod'), selSubj=$('#selSubj'), selTheme=$('#selTheme'), selLesson=$('#selLesson');
-function fill(sel, arr, label){ sel.innerHTML = arr.map((x,i)=>`<option value="${i}">${esc(label(x,i))}</option>`).join(''); }
-function curMod(){ return PROGRAM[+selMod.value||0]; }
-function curSubj(){ return curMod().subjects[+selSubj.value||0]; }
-function curTheme(){ return curSubj().themes[+selTheme.value||0]; }
-function curLesson(){ const t=curTheme(); return t.lessons.length ? t.lessons[+selLesson.value||0] : null; }
+const C='c';
+const CUSTOM_OPT='<option value="c">✎ Свій варіант…</option>';
+const isC = sel => sel.value===C;
+function fill(sel, arr, label){ sel.innerHTML = arr.map((x,i)=>`<option value="${i}">${esc(label(x,i))}</option>`).join('') + CUSTOM_OPT; if(!arr.length) sel.value=C; }
+function curMod(){ return isC(selMod)?null:PROGRAM[+selMod.value]; }
+function curSubj(){ const m=curMod(); return (!m||isC(selSubj))?null:m.subjects[+selSubj.value]; }
+function curTheme(){ const s=curSubj(); return (!s||isC(selTheme))?null:s.themes[+selTheme.value]; }
+function curLesson(){ const t=curTheme(); return (!t||isC(selLesson)||!t.lessons.length)?null:t.lessons[+selLesson.value]; }
+function syncCustom(){
+  $('#cMod').hidden=!isC(selMod); $('#cSubj').hidden=!isC(selSubj); $('#cTheme').hidden=!isC(selTheme); $('#cLesson').hidden=!isC(selLesson);
+  $('#cExtra').hidden=!isC(selLesson);
+}
 function initSelects(){
   fill(selMod, PROGRAM, m=>m.name);
-  selMod.onchange=()=>{ fill(selSubj, curMod().subjects, s=>s.name); selSubj.onchange(); };
-  selSubj.onchange=()=>{ fill(selTheme, curSubj().themes, t=>'Тема '+t.name); selTheme.onchange(); };
-  selTheme.onchange=()=>{
-    const t=curTheme();
-    if(t.lessons.length){ fill(selLesson, t.lessons, l=>'Заняття '+l.name+' · '+l.h+' год'); selLesson.disabled=false; }
-    else { selLesson.innerHTML='<option>— заняття вкажете на аркуші —</option>'; selLesson.disabled=true; }
-    selLesson.onchange();
-  };
-  selLesson.onchange=()=>{ renderLessonCard(); updateMag(); LS.set('sel',[selMod.value,selSubj.value,selTheme.value,selLesson.value]); };
-  const sv=LS.get('sel',null);
+  selMod.onchange=()=>{ const m=curMod(); fill(selSubj, m?m.subjects:[], s=>s.name); selSubj.onchange(); };
+  selSubj.onchange=()=>{ const s=curSubj(); fill(selTheme, s?s.themes:[], t=>'Тема '+t.name); selTheme.onchange(); };
+  selTheme.onchange=()=>{ const t=curTheme(); fill(selLesson, t?t.lessons:[], l=>'Заняття '+l.name+' · '+l.h+' год'); selLesson.onchange(); };
+  selLesson.onchange=()=>{ syncCustom(); renderLessonCard(); updateMag(); saveSel(); };
+  const sv=LS.get('sel2',null);
   selMod.onchange();
   if(sv){ try{
-    selMod.value=sv[0]; selMod.onchange(); selSubj.value=sv[1]; selSubj.onchange(); selTheme.value=sv[2]; selTheme.onchange();
-    if(!selLesson.disabled){ selLesson.value=sv[3]; selLesson.onchange(); }
+    const set=(sel,v)=>{ if([...sel.options].some(o=>o.value===v)) sel.value=v; };
+    set(selMod,sv.v[0]); selMod.onchange(); set(selSubj,sv.v[1]); selSubj.onchange(); set(selTheme,sv.v[2]); selTheme.onchange(); set(selLesson,sv.v[3]); selLesson.onchange();
+    Object.entries(sv.t||{}).forEach(([k,v])=>{ const el=$('#'+k); if(el) el.value=v; });
   }catch(e){} }
+  ['cMod','cSubj','cTheme','cLesson','cHours','cMethod','cPlace','cQ'].forEach(id=>$('#'+id).addEventListener('input',()=>{ updateMag(); saveSel(); }));
+}
+function saveSel(){
+  const t={}; ['cMod','cSubj','cTheme','cLesson','cHours','cMethod','cPlace','cQ'].forEach(id=>t[id]=$('#'+id).value);
+  LS.set('sel2',{v:[selMod.value,selSubj.value,selTheme.value,selLesson.value],t});
 }
 function renderLessonCard(){
   const l=curLesson(), c=$('#lessonCard');
-  if(!l){ c.innerHTML=`<b>Деталізації занять цієї теми немає в базі.</b><br>Додаток сформує каркас, а в режимі Gemini — запропонує навчальні питання й зміст. Можна також перейти на вкладку «Своя тема».`; return; }
+  if(isC(selLesson)){ c.hidden=true; return; }
+  c.hidden=false;
+  if(!l){ c.innerHTML='Оберіть заняття або «✎ Свій варіант».'; return; }
   c.innerHTML=`<div class="chips"><span class="chip">${l.h} год</span><span class="chip">${esc(l.method)}</span>${l.place&&l.place!=='—'?`<span class="chip">${esc(l.place)}</span>`:''}</div>
   <b>Навчальні питання за програмою:</b><ul>${l.q.map(q=>`<li>${esc(q)}</li>`).join('')}</ul>`;
 }
-
-/* ================= TABS ================= */
-$$('.tab').forEach(b=>b.onclick=()=>{
-  S.src=b.dataset.src; $$('.tab').forEach(x=>x.setAttribute('aria-selected', x===b));
-  $('#srcProg').hidden=S.src!=='prog'; $('#srcOwn').hidden=S.src!=='own'; updateMag();
-});
-['ownSubj','ownTheme','ownLesson','ownHours','ownMethod','ownQ','notes'].forEach(id=>$('#'+id).addEventListener('input',updateMag));
+$('#notes').addEventListener('input',updateMag);
 
 /* ================= REQUISITES ================= */
 const REQ = LS.get('req',{hourMin:'45',fileTag:'КВ'});
@@ -122,8 +125,9 @@ $('#delKey').onclick=e=>{ e.preventDefault(); S.key=''; LS.del('key'); updateLed
 /* ================= READINESS MAGAZINE ================= */
 function updateMag(){
   let n=0;
-  if(S.src==='prog'){ n+=2; if(curLesson()) n+=1; }
-  else { if($('#ownTheme').value.trim()) n++; if($('#ownLesson').value.trim()) n+=2; }
+  const lessonOk = curLesson() || (isC(selLesson) && $('#cLesson').value.trim()) ? 1 : 0;
+  const themeOk = curTheme() || $('#cTheme').value.trim() ? 1 : 0;
+  n += themeOk + lessonOk*2;
   if(S.files.length) n+=2; else if($('#notes').value.trim().length>40) n+=1;
   ['apPos','apName','unit','leader'].forEach(k=>{ if((REQ[k]||'').trim()) n++; });
   if(S.mode==='ai') n++;
@@ -238,15 +242,17 @@ const ABBR={'Лідерство':'ЛІД','Організаційна підго
 const num = s => (String(s).match(/^\s*(\d+)/)||[])[1]||'';
 const stripNum = s => String(s).replace(/^\s*\d+\.\s*/,'').trim();
 function lessonInfo(){
-  if(S.src==='prog'){
-    const m=curMod(), s=curSubj(), t=curTheme(), l=curLesson();
-    return { module:m.name, subject:s.name, theme:t.name, lesson:l?l.name:'', h:l?l.h:1, method:l?l.method:'', q:l?l.q.slice():[], place:l?l.place:'', fromProgram:true, hasLesson:!!l };
-  }
-  return { module:'', subject:$('#ownSubj').value.trim(), theme:$('#ownTheme').value.trim(), lesson:$('#ownLesson').value.trim(),
-    h:Math.max(1,+$('#ownHours').value||1), method:$('#ownMethod').value.trim(),
-    q:$('#ownQ').value.split('\n').map(x=>clean(x.replace(/^\s*\d+[.)]\s*/,''))).filter(Boolean), place:'', fromProgram:false, hasLesson:!!$('#ownLesson').value.trim() };
+  const m=curMod(), sj=curSubj(), t=curTheme(), l=curLesson();
+  const v=id=>$('#'+id).value.trim();
+  const custom=isC(selLesson);
+  return {
+    module: m?m.name:v('cMod'), subject: sj?sj.name:v('cSubj'), theme: t?t.name:v('cTheme'),
+    lesson: l?l.name:(custom?v('cLesson'):''),
+    h: l?l.h:Math.max(1,+v('cHours')||1), method: l?l.method:(custom?v('cMethod'):''),
+    q: l?l.q.slice():(custom?v('cQ').split('\n').map(x=>clean(x.replace(/^\s*\d+[.)]\s*/,''))).filter(Boolean):[]),
+    place: l?l.place:(custom?v('cPlace'):''), fromProgram:!!l, hasLesson:!!(l||v('cLesson'))
+  };
 }
-
 /* ================= BASIC GENERATOR (no AI) ================= */
 const stem = w => w.toLowerCase().replace(/[^а-яіїєґa-z0-9]/g,'').slice(0,5);
 const words = s => new Set(String(s).split(/\s+/).map(stem).filter(w=>w.length>=4));
@@ -323,7 +329,7 @@ function buildBasic(){
 }
 
 /* ================= GEMINI ================= */
-const SYS = `Ти — досвідчений методист навчального центру Збройних Сил України. Ти складаєш плани-конспекти занять за Програмою об’єднаної (суміщеної) підготовки командирів відділень за ВОС-100 (35 діб, СТП 7-(01,02,04)242.(62), 2026).
+const SYS = `Ти — досвідчений методист навчального центру Збройних Сил України. Ти складаєш плани-конспекти занять переважно за Програмою об’єднаної (суміщеної) підготовки командирів відділень за ВОС-100 (СТП 7-(01,02,04)242.(62), 2026), а також за будь-якими іншими темами, які вкаже інструктор.
 Правила:
 - Пиши українською, чіткою військовою термінологією, без markdown, без зірочок і решіток.
 - Навчальні питання бери з програми (формулювання не змінюй; якщо їх більше 6 — об’єднай логічно у 3–5). Якщо питань немає — сформулюй 2–4 питання за темою і матеріалами.
@@ -400,7 +406,7 @@ const INTRO = [
   ['Порядок проведення заняття.','Визначено порядок дій під час заняття: правила конспектування матеріалу, можливість та порядок постановки запитань і отримання відповідей на них. За потреби здійснено переміщення особового складу в класі.'],
   ['Мотивація особового складу.','Проведено мотивацію курсантів шляхом акцентування уваги на важливості та практичній значущості даної теми. Наведено приклади ситуацій із реального бойового досвіду.']
 ];
-const markPh = v => esc(v).replace(/\[[^\]\n]{1,160}\]/g, m=>`<mark class="ph">${m}</mark>`);
+const markPh = v => esc(v).replace(/\[[^\]\n]{1,160}\]/g, m=>`<mark class="phm">${m}</mark>`);
 const ce = (k, v, cls='') => `<span contenteditable="true" spellcheck="true" data-k="${k}" class="${cls}">${markPh(v)}</span>`;
 function fileName(L){
   const ab=ABBR[L.subject]||(L.subject?L.subject.split(/\s+/).map(w=>w[0]).join('').toUpperCase().slice(0,4):'ПК');
@@ -457,7 +463,7 @@ function afterRender(loaded){
       renumber(); saveCurrent(); }
     if(e.target.id==='addRow'){ const tb=$('#qtable tbody'); tb.insertAdjacentHTML('beforeend',qRow({q:PH('формулювання питання'),c:PH('тези')},tb.children.length)); $$('#sheet .cbox').forEach(d=>d.style.whiteSpace='pre-wrap'); saveCurrent(); }
   });
-  sheet.addEventListener('input',e=>{ const el=e.target.closest('[data-k]'); if(el) el.querySelectorAll('mark.ph').forEach(m=>{ if(!/^\[[^\]]*\]$/.test(m.textContent)) m.replaceWith(...m.childNodes); }); clearTimeout(saveCurrent._t); saveCurrent._t=setTimeout(saveCurrent,800); });
+  sheet.addEventListener('input',e=>{ const el=e.target.closest('[data-k]'); if(el) el.querySelectorAll('mark.phm').forEach(m=>{ if(!/^\[[^\]]*\]$/.test(m.textContent)) m.replaceWith(...m.childNodes); }); clearTimeout(saveCurrent._t); saveCurrent._t=setTimeout(saveCurrent,800); });
   sheet.addEventListener('paste',e=>{ if(e.target.closest('[contenteditable]')){ e.preventDefault(); document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text')); } });
   saveCurrent(!loaded);
 }
@@ -555,7 +561,7 @@ $('#exAi').onclick=async()=>{
 
 $('#fire').onclick=async()=>{
   const f=$('#fire');
-  if(S.src==='own' && !$('#ownTheme').value.trim() && !$('#ownLesson').value.trim()){ toast('Вкажіть тему або заняття'); $('#ownTheme').focus(); return; }
+  { const L=lessonInfo(); if(!L.theme && !L.lesson){ toast('Вкажіть тему або заняття'); (isC(selTheme)?$('#cTheme'):selTheme).focus(); return; } }
   f.classList.add('recoil'); $('#flash').classList.remove('go'); void $('#flash').offsetWidth; $('#flash').classList.add('go');
   setTimeout(()=>f.classList.remove('recoil'),350);
   let D;
