@@ -7,6 +7,10 @@
 <meta name="theme-color" content="#16181a">
 <title>ЯРИЙ — помічник конспектів</title>
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ЯРИЙ">
 <link rel="manifest" href="manifest.webmanifest">
 <style>
 @font-face{font-family:Russo;src:url(fonts/russo-one-cyrillic-400-normal.woff2) format('woff2');unicode-range:U+0400-04FF}
@@ -216,6 +220,17 @@ details.req summary::-webkit-details-marker{display:none}
 .slot-st{font-family:var(--mono);font-size:11px;color:var(--muted)}
 .slot.on .slot-st{color:var(--green)}
 .slot-act{display:flex;flex-direction:column;gap:6px}
+
+.inst-card{display:grid;grid-template-columns:auto 1fr;gap:14px;padding:14px;margin-bottom:12px;background:#121416;border:1px solid #000;border-radius:10px}
+.inst-card.rec{border-color:var(--olive-2);background:linear-gradient(180deg,#1b1f17,#121416)}
+.inst-card b{font-family:var(--ui);letter-spacing:.04em}
+.inst-card p{margin:6px 0 10px;font-size:13.5px;color:#cfcabd}
+.inst-ico img{border-radius:12px;display:block}
+.inst-hint{font-size:12.5px;color:var(--tan);margin-top:8px;line-height:1.45}
+.net{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.08em}
+.net i{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.net.off i{background:var(--red)}
+
 @media(max-width:640px){.slot{grid-template-columns:auto 1fr}.slot-act{grid-column:1/-1;flex-direction:row}}
 
 @media(max-width:640px){.sheet{padding:28px 18px;font-size:12pt}.paper-wrap{padding:8px}}
@@ -326,7 +341,7 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
       <div>
         <h1>ЯРИЙ</h1>
         <div class="sub">Помічник конспектів</div>
-        <div class="serial">ПК-158 · СЕР. № 2026-0001 · КАЛІБР: ПЛАН-КОНСПЕКТ</div>
+        <div class="serial">ПК-158 · СЕР. № 2026-0001 · КАЛІБР: ПЛАН-КОНСПЕКТ · <span class="net" id="net"><i></i><span>ОНЛАЙН</span></span></div>
       </div>
     </div>
     <div class="hdr-rifle"><svg class="rifle ghost" viewBox="0 0 620 170" aria-hidden="true"><defs><linearGradient id="rs2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a5056"/><stop offset="1" stop-color="#23272a"/></linearGradient><linearGradient id="ro2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b7349"/><stop offset="1" stop-color="#3f4429"/></linearGradient></defs>
@@ -350,6 +365,7 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
 </svg></div>
     <div class="top-actions">
       <button class="led off" id="ledKey" title="Стан підключення Gemini"><i></i><span>GEMINI: НЕ ПІДКЛЮЧЕНО</span></button>
+      <button class="btn brass sm" id="btnInstall" title="Встановити на робочий стіл / завантажити офлайн">⤓ Встановити</button>
       <button class="btn ghost sm" id="btnHist" title="Збережені конспекти">▤ Збережені</button>
       <button class="btn sm" id="btnInfo">ℹ Інформація</button>
     </div>
@@ -497,7 +513,7 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
       <b>158-й навчальний центр</b><br>
       <span class="small">Розробник — Юрій Мельничук (позивний «Композитор»)</span>
     </div>
-    <div class="stamp">ЯРИЙ · v1.2 · 2026</div>
+    <div class="stamp">ЯРИЙ · v1.3 · 2026</div>
   </div>
 </footer>
 
@@ -532,6 +548,7 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
       <p>Натисніть індикатор <b>«GEMINI»</b> вгорі або перемкніть режим на <b>«АВ · GEMINI»</b> — відкриється покрокова інструкція. Знадобиться лише ваш Google-акаунт. Ключ зберігається тільки у вашому браузері й нікуди, крім Google, не передається. Працює на вашому безкоштовному ліміті Gemini.</p>
       <h4>Корисно знати</h4>
       <ul>
+        <li>Встановлення на робочий стіл або офлайн-папка — кнопка «⤓ Встановити». З інтернетом працює повний режим, без інтернету — базовий.</li>
         <li>Збережені конспекти — кнопка «▤ Збережені» (зберігаються в цьому браузері).</li>
         <li>PDF: у вікні друку оберіть «Зберегти як PDF».</li>
         <li>Перевіряйте зміст, створений ШІ: відповідальність за конспект — на керівникові заняття.</li>
@@ -562,6 +579,33 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
   </div>
 </div>
 
+<!-- INSTALL -->
+<div class="modal" id="mInstall" role="dialog" aria-modal="true" aria-labelledby="mInstT">
+  <div class="mbox">
+    <div class="mhead"><h3 id="mInstT">⤓ ВСТАНОВИТИ «ЯРИЙ»</h3><button class="close" data-close aria-label="Закрити">×</button></div>
+    <div class="mbody">
+      <div class="inst-card rec">
+        <div class="inst-ico"><img src="icons/icon-192.png" alt="" width="56" height="56"></div>
+        <div>
+          <b>На робочий стіл — рекомендовано</b>
+          <p>Значок «ЯРИЙ» на робочому столі, окреме вікно. <b>З інтернетом</b> — повний режим з Gemini, <b>без інтернету</b> — базовий режим (80%). Оновлюється сам.</p>
+          <button class="btn olive" id="doInstall">⤓ Встановити на цей комп’ютер</button>
+          <div class="inst-hint" id="instHint"></div>
+        </div>
+      </div>
+      <div class="inst-card">
+        <div class="inst-ico"><svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><rect x="6" y="14" width="44" height="34" rx="4" fill="#2a2e32" stroke="#000" stroke-width="2"/><path d="M6 18 h16 l4 -6 h-16z" fill="#3a3f44" stroke="#000" stroke-width="2"/><path d="M28 22 v16 m-7 -7 l7 7 l7 -7" stroke="#c9a24a" stroke-width="3.5" fill="none" stroke-linecap="round"/></svg></div>
+        <div>
+          <b>Офлайн-папка — для флешки й комп’ютерів без інтернету</b>
+          <p>Архів із папкою «ЯРИЙ». Розпакуйте його і запустіть значок: на Windows — «ЯРИЙ (Windows)», на Mac — «ЯРИЙ». Файл «Ярлик на робочий стіл (Windows)» ставить значок-мушку на робочий стіл. З інтернетом папка теж працює з Gemini.</p>
+          <a class="btn" id="dlOffline" href="yaryi-offline.zip" download>⤓ Завантажити офлайн-папку (ZIP)</a>
+        </div>
+      </div>
+      <p style="font-size:12.5px;color:var(--dim);margin-bottom:0">Ключ Gemini, реквізити, зразки й збережені конспекти зберігаються окремо в кожному браузері/вікні. Після встановлення їх треба один раз вказати знову.</p>
+    </div>
+  </div>
+</div>
+
 <!-- HISTORY -->
 <div class="modal" id="mHist" role="dialog" aria-modal="true" aria-labelledby="mHistT">
   <div class="mbox">
@@ -573,7 +617,7 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
 <div class="toast" id="toast"></div>
 
 <script src="lib/jszip.min.js"></script>
-<script src="data/program.js?v=1.2"></script>
-<script src="app.js?v=1.2"></script>
+<script src="data/program.js?v=1.3"></script>
+<script src="app.js?v=1.3"></script>
 </body>
 </html>

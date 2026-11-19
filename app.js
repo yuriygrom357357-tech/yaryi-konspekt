@@ -559,6 +559,7 @@ $('#exTxt').onclick=()=>{ const d=readDoc(); download(new Blob([docText(d)],{typ
 $('#exCopy').onclick=async()=>{ try{ await navigator.clipboard.writeText(docText(readDoc())); toast('✓ Текст скопійовано — вставляйте куди завгодно'); }catch(e){ toast('Не вдалося скопіювати'); } };
 $('#exAi').onclick=async()=>{
   if(!S.key){ openKey(); return; }
+  if(!navigator.onLine){ toast('Немає інтернету — Gemini недоступний'); return; }
   const b=$('#exAi'); b.disabled=true; b.textContent='✨ Gemini працює…';
   try{
     const d=readDoc(), L=lessonInfo(); L.subject=d.subject; L.theme=d.theme; L.lesson=d.lesson; L.method=d.method; L.place=d.place;
@@ -576,7 +577,8 @@ $('#fire').onclick=async()=>{
   f.classList.add('recoil'); $('#flash').classList.remove('go'); void $('#flash').offsetWidth; $('#flash').classList.add('go');
   setTimeout(()=>f.classList.remove('recoil'),350);
   let D;
-  if(S.mode==='ai' && S.key){
+  if(S.mode==='ai' && S.key && !navigator.onLine){ toast('Немає інтернету — сформовано в базовому режимі (80%)',4500); }
+  if(S.mode==='ai' && S.key && navigator.onLine){
     f.disabled=true; f.classList.add('busy'); f.querySelector('span').textContent='GEMINI ПРАЦЮЄ…'; $('#fireSub').textContent='зазвичай 10–40 секунд';
     try{ D=await buildAI(); }
     catch(e){ toast('⚠ Gemini не відповів ('+e.message+'). Сформовано базовий варіант — 80%.',7000); D=buildBasic(); }
@@ -806,7 +808,7 @@ async function exportPptx(){
   const b=$('#exPptx'), old=b.textContent; b.disabled=true;
   try{
     const d=readDoc(); let slides;
-    if(S.mode==='ai' && S.key){ b.textContent='▶ GEMINI ГОТУЄ СЛАЙДИ…'; try{ slides=await aiSlides(d); }catch(e){ toast('Gemini не відповів — слайди зібрано з конспекту'); } }
+    if(S.mode==='ai' && S.key && navigator.onLine){ b.textContent='▶ GEMINI ГОТУЄ СЛАЙДИ…'; try{ slides=await aiSlides(d); }catch(e){ toast('Gemini не відповів — слайди зібрано з конспекту'); } }
     if(!slides) slides=slidesFromDoc(d);
     b.textContent='▶ ЗБИРАЮ PPTX…';
     if(SAMPLE.ppt) await pptxFromSample(SAMPLE.ppt,slides,d.file); else await pptxDefault(slides,d.file);
@@ -816,7 +818,40 @@ async function exportPptx(){
 }
 $('#exPptx').onclick=exportPptx;
 
+/* ================= INSTALL / ONLINE-OFFLINE ================= */
+const ONLINE_URL='https://yuriygrom357357-tech.github.io/yaryi-konspekt/';
+let deferredPrompt=null;
+const isStandalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const isFileMode=location.protocol==='file:';
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredPrompt=e; });
+window.addEventListener('appinstalled',()=>{ deferredPrompt=null; closeModals(); toast('✓ «ЯРИЙ» встановлено — значок на робочому столі',4500); });
+function instHint(){
+  const ua=navigator.userAgent, h=$('#instHint'), b=$('#doInstall');
+  b.disabled=false;
+  if(isStandalone()){ h.textContent='✓ Ви вже працюєте у встановленому додатку «ЯРИЙ».'; b.disabled=true; return; }
+  if(isFileMode){ h.innerHTML=`Це офлайн-папка. Щоб встановити версію з автооновленням, відкрийте з інтернетом: <a href="${ONLINE_URL}" target="_blank" rel="noopener">${ONLINE_URL}</a>`; b.disabled=true; return; }
+  if(deferredPrompt){ h.textContent='Натисніть кнопку і підтвердьте «Установити». Значок з’явиться на робочому столі та в меню «Пуск» / Launchpad.'; return; }
+  if(/iPhone|iPad|iPod/.test(ua)) h.textContent='iPhone / iPad: у Safari натисніть «Поділитися» (квадрат зі стрілкою) → «На початковий екран».';
+  else if(/Macintosh/.test(ua) && /Safari/.test(ua) && !/Chrome|Edg/.test(ua)) h.textContent='Safari на Mac: меню «Файл» → «Додати в Dock».';
+  else if(/Firefox/.test(ua)) h.textContent='Firefox не встановлює сайти як додатки. Відкрийте цю сторінку в Chrome або Edge — або завантажте офлайн-папку нижче.';
+  else if(/Android/.test(ua)) h.textContent='Android: меню ⋮ у Chrome → «Додати на головний екран» / «Установити додаток».';
+  else h.textContent='Якщо вікно встановлення не з’явилось: у Chrome/Edge натисніть значок «Встановити» праворуч в адресному рядку, або меню ⋮ → «Трансляція, збереження й надсилання» → «Установити сторінку як додаток».';
+}
+$('#btnInstall').onclick=()=>{ instHint(); openModal('#mInstall'); };
+$('#doInstall').onclick=async()=>{
+  if(deferredPrompt){ deferredPrompt.prompt(); const r=await deferredPrompt.userChoice.catch(()=>({})); deferredPrompt=null; if(r.outcome!=='accepted') toast('Встановлення скасовано'); instHint(); }
+  else { instHint(); toast('Скористайтеся підказкою під кнопкою',3500); }
+};
+$('#dlOffline').href = isFileMode ? ONLINE_URL+'yaryi-offline.zip' : 'yaryi-offline.zip';
+if(isStandalone()) $('#btnInstall').textContent='⤓ Офлайн';
+function netState(showToast){
+  const on=navigator.onLine, n=$('#net'); if(!n) return;
+  n.classList.toggle('off',!on); n.querySelector('span').textContent=on?'ОНЛАЙН':'ОФЛАЙН';
+  if(showToast) toast(on?'Зв’язок є — режим Gemini доступний':'Немає інтернету — працює базовий режим (80%)',3500);
+}
+window.addEventListener('online',()=>netState(true)); window.addEventListener('offline',()=>netState(true));
+
 /* ================= INIT ================= */
-initSelects(); restoreSamples(); updateLed(); setMode(S.key?S.mode:'basic',true); updateMag();
+initSelects(); restoreSamples(); updateLed(); netState(false); setMode(S.key?S.mode:'basic',true); updateMag();
 if(!LS.get('seenInfo',false)){ LS.set('seenInfo',true); setTimeout(()=>openModal('#mInfo'),600); }
 if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
