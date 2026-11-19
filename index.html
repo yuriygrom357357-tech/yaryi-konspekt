@@ -207,6 +207,17 @@ details.req summary::-webkit-details-marker{display:none}
 .sel-track::before{content:"";position:absolute;left:50%;top:-7px;width:2px;height:6px;background:#6a7076}
 .docbar{border-top:5px solid transparent;border-image:repeating-linear-gradient(90deg,#3d4247 0 10px,#15171a 10px 15px) 5}
 
+
+.slot{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:11px 12px;margin-bottom:10px;border:1px dashed #4a5056;border-radius:10px;background:#111315;transition:.2s}
+.slot.over{border-color:var(--brass);background:#16181a}
+.slot.on{border-style:solid;border-color:var(--olive-2);background:linear-gradient(180deg,#1b1f17,#141713)}
+.slot-txt b{font-family:var(--ui);letter-spacing:.06em;font-size:13.5px;display:block}
+.slot-txt small{display:block;color:var(--dim);font-size:12px;line-height:1.35;margin:2px 0 4px}
+.slot-st{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.slot.on .slot-st{color:var(--green)}
+.slot-act{display:flex;flex-direction:column;gap:6px}
+@media(max-width:640px){.slot{grid-template-columns:auto 1fr}.slot-act{grid-column:1/-1;flex-direction:row}}
+
 @media(max-width:640px){.sheet{padding:28px 18px;font-size:12pt}.paper-wrap{padding:8px}}
 .sheet [contenteditable]{outline:none;border-radius:2px}
 .sheet [contenteditable]:hover{background:#fff8dc}
@@ -394,8 +405,26 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
       </div>
 
       <div class="panel">
+        <div class="ph"><div class="num">3</div><h2>Зразки</h2><span class="hint">запам’ятовуються</span></div>
+        <div class="pb">
+          <div class="slot" id="slotDoc" data-kind="doc">
+            <svg width="34" height="40" viewBox="0 0 34 40" aria-hidden="true"><path d="M3 2h20l8 8v28H3z" fill="#e8e4d8" stroke="#000" stroke-width="1.5"/><path d="M23 2v8h8" fill="#bdb6a2" stroke="#000" stroke-width="1.5"/><rect x="7" y="17" width="20" height="3" fill="#2b579a"/><rect x="7" y="23" width="20" height="2" fill="#777"/><rect x="7" y="28" width="14" height="2" fill="#777"/></svg>
+            <div class="slot-txt"><b>Зразок конспекту</b><small>Word (.docx). За ним оформлюється документ і пишеться зміст</small><span class="slot-st" id="stDoc">не завантажено</span></div>
+            <div class="slot-act"><button class="btn sm" data-pick="doc">Завантажити</button><button class="btn ghost sm" data-rm="doc" hidden>Прибрати</button></div>
+            <input type="file" id="fDoc" accept=".docx" hidden>
+          </div>
+          <div class="slot" id="slotPpt" data-kind="ppt">
+            <svg width="34" height="40" viewBox="0 0 34 40" aria-hidden="true"><path d="M3 2h20l8 8v28H3z" fill="#e8e4d8" stroke="#000" stroke-width="1.5"/><path d="M23 2v8h8" fill="#bdb6a2" stroke="#000" stroke-width="1.5"/><rect x="7" y="16" width="20" height="13" rx="1" fill="#c43e1c"/><path d="M14 19v7l6-3.5z" fill="#fff"/></svg>
+            <div class="slot-txt"><b>Зразок презентації</b><small>PowerPoint (.pptx). У його оформленні будуть слайди</small><span class="slot-st" id="stPpt">не завантажено — стандартний військовий дизайн</span></div>
+            <div class="slot-act"><button class="btn sm" data-pick="ppt">Завантажити</button><button class="btn ghost sm" data-rm="ppt" hidden>Прибрати</button></div>
+            <input type="file" id="fPpt" accept=".pptx" hidden>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
         <details class="req" id="reqBox">
-          <summary class="ph"><div class="num">3</div><h2>Реквізити</h2><span class="hint" id="reqHint">запам’ятовуються ▾</span></summary>
+          <summary class="ph"><div class="num">4</div><h2>Реквізити</h2><span class="hint" id="reqHint">запам’ятовуються ▾</span></summary>
           <div class="pb">
             <label class="f"><span>«Затверджую» — посада</span><input class="inp" data-req="apPos" placeholder="напр. Командир навчального батальйону"></label>
             <label class="f"><span>«Затверджую» — звання, ініціали, прізвище</span><input class="inp" data-req="apName" placeholder="напр. майор Іван ПЕТРЕНКО"></label>
@@ -424,6 +453,7 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
         <span class="lbl">ЗБЕРЕГТИ:</span>
         <button class="round-btn" id="exDocx">▮ WORD</button>
         <button class="round-btn" id="exPdf">▮ PDF</button>
+        <button class="round-btn" id="exPptx" title="Зробити слайди з цього конспекту">▶ ПРЕЗЕНТАЦІЯ</button>
         <button class="round-btn steel" id="exPrint">⎙ ДРУК</button>
         <button class="round-btn steel" id="exTxt">TXT</button>
         <button class="round-btn steel" id="exCopy">⧉ КОПІЮВАТИ</button>
@@ -467,7 +497,7 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
       <b>158-й навчальний центр</b><br>
       <span class="small">Розробник — Юрій Мельничук (позивний «Композитор»)</span>
     </div>
-    <div class="stamp">ЯРИЙ · v1.1 · 2026</div>
+    <div class="stamp">ЯРИЙ · v1.2 · 2026</div>
   </div>
 </footer>
 
@@ -484,13 +514,20 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
         <div class="pct"><div class="big">80%</div><b>ОД · БАЗОВИЙ</b>
           <ul><li>без ключа, безкоштовно, працює навіть офлайн;</li><li>реквізити, тема, заняття, час, метод і навчальні питання — з програми;</li><li>вступна та заключна частини — автоматично;</li><li>текст слайдів розкладається по питаннях;</li><li>те, чого бракує, позначається <span style="background:#ffe9a8;color:#000;padding:0 4px">[жовтим]</span> — допишіть вручну.</li></ul></div>
       </div>
-      <h4>Як користуватися — 4 кроки</h4>
+      <h4>Як користуватися — 5 кроків</h4>
       <ol>
         <li><b>Заняття.</b> Оберіть курс → предмет → тему → заняття зі списку. У кожному полі є «✎ Свій варіант» — можна вписати будь-що своє.</li>
         <li><b>Матеріали.</b> За бажанням «зарядіть» презентацію (PPTX, PDF, DOCX, TXT) або вставте нотатки.</li>
+        <li><b>Зразки (за бажанням).</b> Конспект у Word і/або презентація-шаблон — щоб усе виходило «як у зразку».</li>
         <li><b>Реквізити.</b> Один раз заповніть посади та прізвища — додаток їх запам’ятає.</li>
-        <li><b>«СФОРМУВАТИ».</b> Перевірте аркуш, виправте що треба прямо на ньому (клацніть по тексту) і натисніть WORD, PDF або ДРУК.</li>
+        <li><b>«СФОРМУВАТИ».</b> Перевірте аркуш, виправте що треба прямо на ньому (клацніть по тексту) і натисніть WORD, PDF, ДРУК або ▶ ПРЕЗЕНТАЦІЯ.</li>
       </ol>
+      <h4>Зразки</h4>
+      <ul>
+        <li><b>Зразок конспекту (Word).</b> Завантажте готовий конспект, який вам подобається. Новий документ отримає його поля, шрифт, стилі й колонтитули. Вступна й заключна частини беруться зі зразка. У режимі Gemini за зразком повторюється ще й стиль і глибина змісту.</li>
+        <li><b>Зразок презентації (PowerPoint).</b> Завантажте свою презентацію-шаблон. Кнопка «▶ ПРЕЗЕНТАЦІЯ» зробить слайди з конспекту в її оформленні: фон, кольори, шрифти, логотипи. Без зразка — у військовому дизайні «Ярого».</li>
+        <li>Зразки запам’ятовуються в цьому браузері: досить завантажити один раз.</li>
+      </ul>
       <h4>Як підключити Gemini (1 хвилина, безкоштовно)</h4>
       <p>Натисніть індикатор <b>«GEMINI»</b> вгорі або перемкніть режим на <b>«АВ · GEMINI»</b> — відкриється покрокова інструкція. Знадобиться лише ваш Google-акаунт. Ключ зберігається тільки у вашому браузері й нікуди, крім Google, не передається. Працює на вашому безкоштовному ліміті Gemini.</p>
       <h4>Корисно знати</h4>
@@ -536,7 +573,7 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
 <div class="toast" id="toast"></div>
 
 <script src="lib/jszip.min.js"></script>
-<script src="data/program.js?v=1.1"></script>
-<script src="app.js?v=1.1"></script>
+<script src="data/program.js?v=1.2"></script>
+<script src="app.js?v=1.2"></script>
 </body>
 </html>

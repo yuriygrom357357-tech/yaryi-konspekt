@@ -324,7 +324,7 @@ function buildBasic(){
     L, tm, ai:false,
     goal: basicGoal(L), materials: basicMaterials(L), literature: basicLiterature(),
     questions: qs.map((q,i)=>({q, c: cont[i] || PH('короткий зміст: тези з презентації або відкритих джерел — заповніть вручну чи підключіть Gemini')})),
-    final: FINAL_TXT
+    final: (SAMPLE.doc&&SAMPLE.doc.final)||FINAL_TXT
   };
 }
 
@@ -384,7 +384,7 @@ ${(curQs||L.q).map((q,i)=>`${i+1}. ${q}`).join('\n')||'— (сформулюй �
 МАТЕРІАЛИ ІНСТРУКТОРА (презентація / нотатки):
 ${m||'— матеріалів немає, використовуй відкриті знання за темою'}
 
-${onlyContent?'Збережи формулювання навчальних питань без змін, перепиши лише «Короткий зміст» (c) — змістовніше і точніше. Інші поля поверни як є або покращ.':'Склади поля плану-конспекту.'} Відповідь — тільки JSON за схемою.`;
+${SAMPLE.doc&&SAMPLE.doc.text?`ЗРАЗОК КОНСПЕКТУ ІНСТРУКТОРА (повтори його стиль, глибину, обсяг тез і манеру формулювань; зміст бери з теми заняття, а не зі зразка):\n${SAMPLE.doc.text.slice(0,12000)}\n\n`:''}${onlyContent?'Збережи формулювання навчальних питань без змін, перепиши лише «Короткий зміст» (c) — змістовніше і точніше. Інші поля поверни як є або покращ.':'Склади поля плану-конспекту.'} Відповідь — тільки JSON за схемою.`;
 }
 async function buildAI(){
   const L=lessonInfo(), tm=timing(L.h);
@@ -437,14 +437,14 @@ function renderSheet(D){
 <p><span class="lbl">КЕРІВНИЦТВО ТА ПОСІБНИКИ:</span> ${ce('literature', D.literature)}</p>
 <h4>ХІД ЗАНЯТТЯ</h4>
 <h5>І. ВСТУПНА ЧАСТИНА – ${ce('introMin', String(tm.intro))} хв.</h5>
-${INTRO.map((x,i)=>`<p><b>${i+1}. ${esc(x[0])}</b> ${ce('intro'+i, x[1])}</p>`).join('')}
+${introList().map((x,i)=>`<p><b>${i+1}. ${ce('introT'+i, x[0])}</b> ${ce('intro'+i, x[1])}</p>`).join('')}
 <h5>ІІ. ОСНОВНА ЧАСТИНА – ${ce('mainMin', String(tm.main))} хв.</h5>
 <table id="qtable"><thead><tr><th>Навчальні питання</th><th>Короткий зміст</th></tr></thead><tbody>${rows}</tbody></table>
 <button class="addrow" id="addRow">+ додати навчальне питання</button>
 <h5>ІІІ. ЗАКЛЮЧНА ЧАСТИНА – ${ce('finMin', String(tm.fin))} хв.</h5>
 <p>${ce('final', D.final)}</p>
 <p style="margin-top:22px"><span class="lbl">КЕРІВНИК ЗАНЯТТЯ:</span> ${ce('leader', REQ.leader||PH('військове звання, підпис, ініціали та прізвище'))}</p>`;
-  $('#docArea').innerHTML=`<div class="paper-wrap"><div class="sheet" id="sheet" data-file="${esc(fileName(L))}" data-ai="${D.ai?1:0}">${html}</div></div>`;
+  $('#docArea').innerHTML=`<div class="paper-wrap"><div class="sheet" id="sheet" data-file="${esc(fileName(L))}" data-ai="${D.ai?1:0}" data-intro="${introList().length}">${html}</div></div>`;
   afterRender();
 }
 function qRow(x,i){
@@ -476,7 +476,7 @@ function readDoc(){
     theme:txt('theme'), lesson:txt('lesson'), goal:txt('goal'), time:txt('time'), place:txt('place'), method:txt('method'),
     materials:txt('materials'), literature:txt('literature'),
     introMin:txt('introMin'), mainMin:txt('mainMin'), finMin:txt('finMin'),
-    intro: INTRO.map((x,i)=>[x[0],txt('intro'+i)]),
+    intro: Array.from({length:+($('#sheet').dataset.intro||INTRO.length)},(_,i)=>[txt('introT'+i)||(INTRO[i]||[''])[0],txt('intro'+i)]),
     questions: $$('#qtable tbody tr').map(tr=>({ q:tr.querySelector('[data-k="q"]').innerText.trim(), c:tr.querySelector('[data-k="c"]').innerText.trim() })),
     final:txt('final'), leader:txt('leader'), file:$('#sheet').dataset.file||'План-конспект'
   };
@@ -493,14 +493,15 @@ function docText(d){
 
 /* ================= DOCX EXPORT ================= */
 const X = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-function run(t,{b=false}={}){ return `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${b?'<w:b/><w:bCs/>':''}<w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr><w:t xml:space="preserve">${X(t)}</w:t></w:r>`; }
+const DX={font:'Times New Roman',sz:28};
+function run(t,{b=false}={}){ const f=X(DX.font); return `<w:r><w:rPr><w:rFonts w:ascii="${f}" w:hAnsi="${f}" w:cs="${f}"/>${b?'<w:b/><w:bCs/>':''}<w:sz w:val="${DX.sz}"/><w:szCs w:val="${DX.sz}"/></w:rPr><w:t xml:space="preserve">${X(t)}</w:t></w:r>`; }
 function para(runs,{jc='both',ind=0,first=0,after=0,before=0,keep=false}={}){
   return `<w:p><w:pPr>${keep?'<w:keepNext/>':''}<w:spacing w:before="${before}" w:after="${after}" w:line="240" w:lineRule="auto"/>${ind||first?`<w:ind w:left="${ind}" w:firstLine="${first}"/>`:''}<w:jc w:val="${jc}"/></w:pPr>${runs}</w:p>`;
 }
 function lbl(label,value,opt={}){ return para(run(label+' ',{b:true})+run(value),{first:709,...opt}); }
 function cellParas(text,bold){ const lines=String(text).split('\n').filter(l=>l.trim()!==''); return (lines.length?lines:['']).map(l=>para(run(l,{b:bold}),{jc:'left'})).join(''); }
-function buildDocxXml(d){
-  const W=9355, c1=3300, c2=W-c1;
+function buildDocxXml(d,sectPr){
+  const W=DX.textW||9355, c1=3300, c2=W-c1;
   const border='<w:tblBorders>'+['top','left','bottom','right','insideH','insideV'].map(s=>`<w:${s} w:val="single" w:sz="4" w:space="0" w:color="000000"/>`).join('')+'</w:tblBorders>';
   const cell=(w,inner,head)=>`<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${head?'<w:shd w:val="clear" w:color="auto" w:fill="F2F2F2"/>':''}</w:tcPr>${inner}</w:tc>`;
   const rows=[`<w:tr><w:trPr><w:tblHeader/></w:trPr>${cell(c1,para(run('Навчальні питання',{b:true}),{jc:'center'}),1)}${cell(c2,para(run('Короткий зміст',{b:true}),{jc:'center'}),1)}</w:tr>`]
@@ -525,10 +526,20 @@ function buildDocxXml(d){
     para(run('КЕРІВНИК ЗАНЯТТЯ: ',{b:true})+run(d.leader),{jc:'left',before:360})
   ].join('');
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="851" w:bottom="1134" w:left="1701" w:header="709" w:footer="709" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="w14 w15"><w:body>${body}${sectPr||'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="851" w:bottom="1134" w:left="1701" w:header="709" w:footer="709" w:gutter="0"/></w:sectPr>'}</w:body></w:document>`;
 }
 async function exportDocx(){
-  const d=readDoc(), zip=new JSZip();
+  const d=readDoc();
+  const sm=SAMPLE.doc;
+  if(sm){
+    const zip=await JSZip.loadAsync(sm.buf);
+    DX.font=sm.font||'Times New Roman'; DX.sz=sm.sz||28; DX.textW=sm.textW||9355;
+    zip.file('word/document.xml',buildDocxXml(d,sm.sectPr));
+    DX.font='Times New Roman'; DX.sz=28; DX.textW=9355;
+    const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    download(blob, d.file+'.docx'); toast('✓ Word збережено за зразком: '+d.file+'.docx'); return;
+  }
+  const zip=new JSZip();
   zip.file('[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>`);
   zip.file('_rels/.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>`);
   zip.file('word/_rels/document.xml.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`);
@@ -601,7 +612,211 @@ $('#histList').addEventListener('click',e=>{
 });
 function afterRenderLoaded(){ afterRender(true); }
 
+/* ================= SAMPLES (зразки) ================= */
+const SAMPLE = { doc:null, ppt:null };
+const IDB = {
+  db: null,
+  open(){ return this.db ? Promise.resolve(this.db) : new Promise((res,rej)=>{ const r=indexedDB.open('yaryi',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>{ this.db=r.result; res(this.db); }; r.onerror=()=>rej(r.error); }); },
+  async get(k){ const db=await this.open(); return new Promise(res=>{ const q=db.transaction('kv').objectStore('kv').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>res(null); }); },
+  async set(k,v){ const db=await this.open(); return new Promise(res=>{ const t=db.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete=()=>res(true); t.onerror=()=>res(false); }); },
+  async del(k){ const db=await this.open(); return new Promise(res=>{ const t=db.transaction('kv','readwrite'); t.objectStore('kv').delete(k); t.oncomplete=()=>res(true); }); }
+};
+function introList(){ return (SAMPLE.doc && SAMPLE.doc.intro && SAMPLE.doc.intro.length>=3) ? SAMPLE.doc.intro : INTRO; }
+function mostCommon(arr){ const m={}; let best=null,bc=0; arr.forEach(v=>{ m[v]=(m[v]||0)+1; if(m[v]>bc){ bc=m[v]; best=v; } }); return best; }
+async function analyzeDocSample(buf,name){
+  const zip=await JSZip.loadAsync(buf);
+  const f=zip.file('word/document.xml'); if(!f) throw new Error('це не схоже на документ Word');
+  const xmlStr=await f.async('string');
+  const sectPr=(xmlStr.match(/<w:sectPr[\s\S]*<\/w:sectPr>(?![\s\S]*<w:sectPr)/)||[])[0]||'';
+  let font=mostCommon([...xmlStr.matchAll(/<w:rFonts[^>]*w:ascii="([^"]+)"/g)].map(m=>m[1]));
+  let sz=+mostCommon([...xmlStr.matchAll(/<w:sz w:val="(\d+)"/g)].map(m=>m[1]));
+  const st=zip.file('word/styles.xml'); if(st && (!font||!sz)){ const sx=await st.async('string'); font=font||(sx.match(/<w:rPrDefault>[\s\S]*?w:ascii="([^"]+)"/)||[])[1]; sz=sz||+((sx.match(/<w:rPrDefault>[\s\S]*?<w:sz w:val="(\d+)"/)||[])[1]||0); }
+  // text width from sectPr
+  const pw=+((sectPr.match(/<w:pgSz[^>]*w:w="(\d+)"/)||[])[1]||11906), pl=+((sectPr.match(/<w:pgMar[^>]*w:left="(\d+)"/)||[])[1]||1701), pr=+((sectPr.match(/<w:pgMar[^>]*w:right="(\d+)"/)||[])[1]||851);
+  const doc=xml(xmlStr);
+  const paras=byTag(doc,'p').map(p=>clean(byTag(p,'t').map(t=>t.textContent).join(''))).filter(Boolean);
+  const idx=re=>paras.findIndex(p=>re.test(p));
+  const iIn=idx(/ВСТУПНА\s+ЧАСТИНА/i), iMain=idx(/ОСНОВНА\s+ЧАСТИНА/i), iFin=idx(/ЗАКЛЮЧНА\s+ЧАСТИНА/i), iLead=paras.findIndex((p,i)=>i>iFin && /КЕРІВНИК\s+ЗАНЯТТЯ/i.test(p));
+  let intro=null;
+  if(iIn>=0 && iMain>iIn){
+    const items=[]; paras.slice(iIn+1,iMain).forEach(p=>{
+      const m=p.match(/^\s*(\d+)[.)]\s*(.+)$/);
+      if(m){ const body=m[2]; const cut=body.search(/[.:]\s/); items.push(cut>3&&cut<90?[body.slice(0,cut+1).trim(),body.slice(cut+1).trim()]:[body,'']); }
+      else if(items.length) items[items.length-1][1]=(items[items.length-1][1]+' '+p).trim();
+    });
+    if(items.length>=3) intro=items;
+  }
+  let final=null;
+  if(iFin>=0){ const fin=paras.slice(iFin+1, iLead>iFin?iLead:iFin+8).join(' '); if(fin.length>40) final=fin; }
+  return { kind:'doc', name, buf, font:font||'Times New Roman', sz:sz||28, sectPr, textW:Math.max(5000,pw-pl-pr), intro, final, text:paras.join('\n') };
+}
+async function analyzePptSample(buf,name){
+  const zip=await JSZip.loadAsync(buf);
+  if(!zip.file('ppt/presentation.xml')) throw new Error('це не схоже на презентацію PowerPoint');
+  const layouts=Object.keys(zip.files).filter(n=>/^ppt\/slideLayouts\/slideLayout\d+\.xml$/.test(n)).length;
+  return { kind:'ppt', name, buf, layouts };
+}
+function renderSlots(){
+  const d=SAMPLE.doc, p=SAMPLE.ppt;
+  $('#slotDoc').classList.toggle('on',!!d); $('#slotPpt').classList.toggle('on',!!p);
+  $('#stDoc').textContent = d ? `✓ ${d.name} · ${d.font}, ${d.sz/2} пт${d.intro?' · вступ зі зразка':''}${d.final?' · заключна зі зразка':''}` : 'не завантажено';
+  $('#stPpt').textContent = p ? `✓ ${p.name} · макетів: ${p.layouts}` : 'не завантажено — стандартний військовий дизайн';
+  $$('[data-rm]').forEach(b=>b.hidden=!SAMPLE[b.dataset.rm]);
+  $$('[data-pick]').forEach(b=>b.textContent=SAMPLE[b.dataset.pick]?'Замінити':'Завантажити');
+}
+async function loadSample(kind,file){
+  try{
+    const buf=await file.arrayBuffer();
+    const s = kind==='doc' ? await analyzeDocSample(buf,file.name) : await analyzePptSample(buf,file.name);
+    SAMPLE[kind]=s; await IDB.set('sample_'+kind,{name:file.name,buf});
+    renderSlots(); toast(kind==='doc'?'✓ Зразок конспекту заряджено — нові конспекти будуть за ним':'✓ Зразок презентації заряджено');
+  }catch(e){ toast('⚠ Зразок не прийнято: '+e.message,5000); }
+}
+[['doc','#fDoc','#slotDoc'],['ppt','#fPpt','#slotPpt']].forEach(([k,inp,slot])=>{
+  const el=$(slot), fi=$(inp);
+  el.querySelector('[data-pick]').onclick=()=>fi.click();
+  el.querySelector('[data-rm]').onclick=async()=>{ SAMPLE[k]=null; await IDB.del('sample_'+k); renderSlots(); toast('Зразок прибрано'); };
+  fi.onchange=()=>{ if(fi.files[0]) loadSample(k,fi.files[0]); fi.value=''; };
+  ['dragenter','dragover'].forEach(ev=>el.addEventListener(ev,e=>{ e.preventDefault(); el.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev=>el.addEventListener(ev,e=>{ e.preventDefault(); el.classList.remove('over'); }));
+  el.addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) loadSample(k,f); });
+});
+async function restoreSamples(){
+  for(const k of ['doc','ppt']){
+    try{ const v=await IDB.get('sample_'+k); if(v&&v.buf) SAMPLE[k]= k==='doc'? await analyzeDocSample(v.buf,v.name) : await analyzePptSample(v.buf,v.name); }catch(e){}
+  }
+  renderSlots();
+}
+
+/* ================= PRESENTATION ================= */
+const noPh = s => String(s||'').replace(/\[[^\]]*\]/g,'').replace(/\s{2,}/g,' ').trim();
+function shortB(s,n=170){ s=noPh(s).replace(/^[–\-•▪]\s*/,''); return s.length>n ? s.slice(0,n).replace(/\s\S*$/,'')+'…' : s; }
+function sentences(t){ return noPh(t).split(/(?<=[.!?])\s+(?=[А-ЯІЇЄҐA-Z])/).map(x=>x.trim()).filter(x=>x.length>3); }
+function slidesFromDoc(d){
+  const S_=[];
+  S_.push({kind:'title', title:stripNum(noPh(d.lesson))||noPh(d.theme)||'Заняття', sub:[noPh(d.subject), d.theme&&('Тема № '+noPh(d.theme)), d.lesson&&('Заняття № '+noPh(d.lesson))].filter(Boolean).join('\n')});
+  const gm=noPh(d.goal); const g= /Виховна/i.test(gm) ? gm.split(/(?=Виховна)/i).map(x=>x.trim()).filter(Boolean) : sentences(gm); if(g.length) S_.push({title:'Мета заняття', bullets:g.map(x=>shortB(x,220))});
+  S_.push({title:'Навчальні питання', bullets:d.questions.map((q,i)=>`${i+1}. ${shortB(q.q,150)}`)});
+  d.questions.forEach((q,i)=>{
+    let b=q.c.split('\n').map(x=>shortB(x)).filter(x=>x.length>2);
+    if(b.length===1 && b[0].length>120) b=sentences(q.c).map(x=>shortB(x));
+    if(!b.length) b=['Зміст питання доповнюється інструктором'];
+    for(let j=0;j<b.length;j+=6) S_.push({title:`Питання ${i+1}. ${shortB(q.q,90)}${j?' (продовження)':''}`, bullets:b.slice(j,j+6)});
+  });
+  const f=sentences(d.final); if(f.length) S_.push({title:'Підсумки заняття', bullets:f.slice(0,6).map(x=>shortB(x))});
+  return S_;
+}
+const SLIDE_SCHEMA={type:'OBJECT',properties:{slides:{type:'ARRAY',items:{type:'OBJECT',properties:{title:{type:'STRING'},bullets:{type:'ARRAY',items:{type:'STRING'}}},required:['title','bullets']}}},required:['slides']};
+async function aiSlides(d){
+  const r=await gemini(`Зроби з цього плану-конспекту структуру навчальної презентації для курсантів. 8–14 слайдів. Перший слайд — назва заняття (bullets: предмет, тема, заняття). Далі: мета, навчальні питання, по 1–2 слайди на кожне питання, підсумки. На слайді до 6 пунктів, кожен — до 14 слів, ємко і по суті, без markdown. Не вигадуй фактів, яких немає в конспекті.\n\nКОНСПЕКТ:\n${docText(d).slice(0,30000)}\n\nВідповідь — тільки JSON.`, SLIDE_SCHEMA);
+  const sl=(r.slides||[]).filter(s=>s&&s.title);
+  if(sl.length<3) throw new Error('замало слайдів');
+  return sl.map((s,i)=> i===0 ? {kind:'title',title:s.title,sub:(s.bullets||[]).join('\n')} : {title:s.title,bullets:(s.bullets||[]).slice(0,7).map(x=>shortB(x,200))});
+}
+async function iconPng(){
+  return new Promise(res=>{ const img=new Image(); img.onload=()=>{ const c=document.createElement('canvas'); c.width=c.height=256; c.getContext('2d').drawImage(img,0,0,256,256); try{ res(c.toDataURL('image/png')); }catch(e){ res(null); } }; img.onerror=()=>res(null); img.src='icons/icon.svg'; });
+}
+function loadScript(src){ return new Promise((res,rej)=>{ if(document.querySelector(`script[src="${src}"]`)) return res(); const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('не вдалося завантажити '+src)); document.head.appendChild(s); }); }
+async function pptxDefault(slides,fileName){
+  if(typeof PptxGenJS==='undefined') await loadScript('lib/pptxgen.min.js');
+  const p=new PptxGenJS(); p.layout='LAYOUT_WIDE'; p.title=fileName; p.author='ЯРИЙ — помічник конспектів';
+  const icon=await iconPng();
+  const rail=[]; for(let x=0;x<13.4;x+=0.32) rail.push({rect:{x,y:0,w:0.2,h:0.14,fill:{color:'3A3F44'}}});
+  p.defineSlideMaster({ title:'YARYI', background:{color:'191C1F'},
+    objects:[{rect:{x:0,y:0,w:13.33,h:0.14,fill:{color:'111315'}}},...rail,
+      {rect:{x:0,y:7.22,w:13.33,h:0.28,fill:{color:'111315'}}},
+      {text:{text:'ЯРИЙ · помічник конспектів',options:{x:0.45,y:7.22,w:6,h:0.28,fontSize:10,color:'6D736F',fontFace:'Arial'}}},
+      ...(icon?[{image:{data:icon,x:12.55,y:0.32,w:0.5,h:0.5}}]:[])],
+    slideNumber:{x:12.45,y:7.22,w:0.6,h:0.28,color:'C9A24A',fontSize:10,fontFace:'Arial'} });
+  slides.forEach(s=>{
+    const sl=p.addSlide({masterName:'YARYI'});
+    if(s.kind==='title'){
+      sl.addShape(p.ShapeType.rect,{x:0.6,y:2.0,w:0.14,h:2.6,fill:{color:'C9A24A'}});
+      sl.addText(s.title,{x:0.95,y:1.8,w:11.3,h:1.9,fontSize:40,bold:true,color:'E2BF63',fontFace:'Arial',valign:'bottom',fit:'shrink'});
+      sl.addText(s.sub||'',{x:0.95,y:3.8,w:11.3,h:1.6,fontSize:18,color:'D9D4C4',fontFace:'Arial',valign:'top',fit:'shrink'});
+      sl.addText('ПЛАН-КОНСПЕКТ · НАВЧАЛЬНЕ ЗАНЯТТЯ',{x:0.95,y:6.2,w:8,h:0.4,fontSize:12,color:'737B4F',fontFace:'Courier New',bold:true,charSpacing:3});
+    } else {
+      sl.addShape(p.ShapeType.rect,{x:0.45,y:0.42,w:0.1,h:0.62,fill:{color:'C9A24A'}});
+      sl.addText(s.title,{x:0.7,y:0.3,w:11.6,h:0.9,fontSize:26,bold:true,color:'E2BF63',fontFace:'Arial',valign:'middle',fit:'shrink'});
+      sl.addShape(p.ShapeType.line,{x:0.45,y:1.25,w:12.4,h:0,line:{color:'3A3F44',width:1.5}});
+      const total=(s.bullets||[]).join(' ').length, fs= total>700?16: total>450?18:20;
+      sl.addText((s.bullets||[]).map(b=>({text:b,options:{bullet:{code:'25AA',color:'C9A24A'},paraSpaceAfter:10}})),
+        {x:0.75,y:1.5,w:11.9,h:5.5,fontSize:fs,color:'E6E3DA',fontFace:'Arial',valign:'top',fit:'shrink'});
+    }
+  });
+  await p.writeFile({fileName:fileName+'.pptx'});
+}
+const NS_P='xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
+function phAttrs(layoutXml, want){
+  const phs=[...layoutXml.matchAll(/<p:ph\b([^>]*)\/?>/g)].map(m=>m[1]);
+  const get=(a,k)=>(a.match(new RegExp('\\s'+k+'="([^"]*)"'))||[])[1];
+  if(want==='title'){ const a=phs.find(a=>/type="(ctrTitle|title)"/.test(a)); return a?`type="${get(a,'type')}"`:null; }
+  const a=phs.find(a=>/type="(subTitle|body|obj)"/.test(a)) || phs.find(a=>!/type=/.test(a) && /idx=/.test(a));
+  if(!a) return null; const t=get(a,'type'), i=get(a,'idx'); return [t&&`type="${t}"`, i&&`idx="${i}"`].filter(Boolean).join(' ');
+}
+function spXml(id,name,ph,paras,scale){
+  const ps=paras.map(t=>`<a:p><a:r><a:rPr lang="uk-UA" dirty="0"/><a:t>${X(t)}</a:t></a:r></a:p>`).join('')||'<a:p><a:endParaRPr lang="uk-UA"/></a:p>';
+  return `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${name}"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph ${ph}/></p:nvPr></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr>${scale?`<a:normAutofit fontScale="${scale}" lnSpcReduction="10000"/>`:'<a:normAutofit/>'}</a:bodyPr><a:lstStyle/>${ps}</p:txBody></p:sp>`;
+}
+function boxXml(id,paras,cx,cy){
+  const ps=paras.map(t=>`<a:p><a:r><a:rPr lang="uk-UA" sz="2000"/><a:t>${X(t)}</a:t></a:r></a:p>`).join('');
+  return `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="Text ${id}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${Math.round(cx*0.07)}" y="${Math.round(cy*0.25)}"/><a:ext cx="${Math.round(cx*0.86)}" cy="${Math.round(cy*0.65)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr><p:txBody><a:bodyPr wrap="square"><a:normAutofit/></a:bodyPr><a:lstStyle/>${ps}</p:txBody></p:sp>`;
+}
+async function pptxFromSample(sm,slides,fileName){
+  const zip=await JSZip.loadAsync(sm.buf);
+  let pres=await zip.file('ppt/presentation.xml').async('string');
+  const relsPath='ppt/_rels/presentation.xml.rels';
+  let rels=await zip.file(relsPath).async('string'), ct=await zip.file('[Content_Types].xml').async('string');
+  const sz=pres.match(/<p:sldSz[^>]*cx="(\d+)"[^>]*cy="(\d+)"/)||[0,12192000,6858000]; const cx=+sz[1], cy=+sz[2];
+  const L=[];
+  for(const n of Object.keys(zip.files).filter(n=>/^ppt\/slideLayouts\/slideLayout\d+\.xml$/.test(n)).sort((a,b)=>+a.match(/(\d+)\.xml/)[1]-+b.match(/(\d+)\.xml/)[1])){
+    const x=await zip.file(n).async('string'); L.push({n,x,type:(x.match(/<p:sldLayout\b[^>]*\stype="(\w+)"/)||[])[1]||''});
+  }
+  if(!L.length) throw new Error('у зразку немає макетів слайдів');
+  const titleL=L.find(l=>l.type==='title')||L[0];
+  const contentL=L.find(l=>l.type==='obj')||L.find(l=>l.type!=='title'&&phAttrs(l.x,'body')&&phAttrs(l.x,'title'))||titleL;
+  Object.keys(zip.files).filter(n=>/^ppt\/(slides|notesSlides)\//.test(n)).forEach(n=>zip.remove(n));
+  rels=rels.replace(/<Relationship\b[^>]*Type="[^"]*\/relationships\/slide"[^>]*\/>/g,'');
+  ct=ct.replace(/<Override\b[^>]*PartName="\/ppt\/(slides|notesSlides)\/[^"]*"[^>]*\/>/g,'');
+  pres=pres.replace(/<p:sldIdLst>[\s\S]*?<\/p:sldIdLst>/,'').replace(/<p:sldIdLst\/>/,'').replace(/<p:custShowLst>[\s\S]*?<\/p:custShowLst>/,'').replace(/<p14:sectionLst[\s\S]*?<\/p14:sectionLst>/,'');
+  // drop app.xml (slide titles/counts)
+  if(zip.file('docProps/app.xml')){ zip.remove('docProps/app.xml'); ct=ct.replace(/<Override\b[^>]*PartName="\/docProps\/app\.xml"[^>]*\/>/,''); const rr=await zip.file('_rels/.rels').async('string'); zip.file('_rels/.rels',rr.replace(/<Relationship\b[^>]*Target="docProps\/app\.xml"[^>]*\/>/,'')); }
+  let ids='';
+  slides.forEach((s,i)=>{
+    const n=i+1, rid='rIdYa'+n, lay=s.kind==='title'?titleL:contentL;
+    const tPh=phAttrs(lay.x,'title'), bPh=phAttrs(lay.x,'body');
+    const body=s.kind==='title' ? (s.sub||'').split('\n').filter(Boolean) : (s.bullets||[]);
+    const total=body.join(' ').length, scale= s.kind==='title'?0: total>700?'70000': total>450?'85000':0;
+    let tree='';
+    tree+= tPh ? spXml(2,'Title',tPh,[s.title]) : boxXml(2,[s.title],cx,cy*0.3);
+    tree+= bPh ? spXml(3,'Content',bPh,body,scale) : boxXml(3,body,cx,cy);
+    zip.file(`ppt/slides/slide${n}.xml`,`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld ${NS_P}><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>${tree}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`);
+    zip.file(`ppt/slides/_rels/slide${n}.xml.rels`,`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/${lay.n.split('/').pop()}"/></Relationships>`);
+    rels=rels.replace('</Relationships>',`<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${n}.xml"/></Relationships>`);
+    ct=ct.replace('</Types>',`<Override PartName="/ppt/slides/slide${n}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/></Types>`);
+    ids+=`<p:sldId id="${300+n}" r:id="${rid}"/>`;
+  });
+  pres=pres.replace(/<p:sldSz\b/,`<p:sldIdLst>${ids}</p:sldIdLst><p:sldSz`);
+  zip.file('ppt/presentation.xml',pres); zip.file(relsPath,rels); zip.file('[Content_Types].xml',ct);
+  const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
+  download(blob,fileName+'.pptx');
+}
+async function exportPptx(){
+  if(!$('#sheet')) return;
+  const b=$('#exPptx'), old=b.textContent; b.disabled=true;
+  try{
+    const d=readDoc(); let slides;
+    if(S.mode==='ai' && S.key){ b.textContent='▶ GEMINI ГОТУЄ СЛАЙДИ…'; try{ slides=await aiSlides(d); }catch(e){ toast('Gemini не відповів — слайди зібрано з конспекту'); } }
+    if(!slides) slides=slidesFromDoc(d);
+    b.textContent='▶ ЗБИРАЮ PPTX…';
+    if(SAMPLE.ppt) await pptxFromSample(SAMPLE.ppt,slides,d.file); else await pptxDefault(slides,d.file);
+    toast(`✓ Презентація збережена: ${d.file}.pptx · ${slides.length} слайдів${SAMPLE.ppt?' · за зразком':''}`,4000);
+  }catch(e){ toast('⚠ Презентація: '+e.message,6000); }
+  b.disabled=false; b.textContent=old;
+}
+$('#exPptx').onclick=exportPptx;
+
 /* ================= INIT ================= */
-initSelects(); updateLed(); setMode(S.key?S.mode:'basic',true); updateMag();
+initSelects(); restoreSamples(); updateLed(); setMode(S.key?S.mode:'basic',true); updateMag();
 if(!LS.get('seenInfo',false)){ LS.set('seenInfo',true); setTimeout(()=>openModal('#mInfo'),600); }
 if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
