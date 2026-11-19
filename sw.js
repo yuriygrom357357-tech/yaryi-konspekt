@@ -1,5 +1,5 @@
-const C='yaryi-v4';
-const A=['./','index.html','app.js?v=1.3','data/program.js?v=1.3','lib/jszip.min.js','lib/pptxgen.min.js','lib/pdf.min.mjs','lib/pdf.worker.min.mjs',
+const C='yaryi-v5';
+const A=['./','index.html','app.js?v=1.4','data/program.js?v=1.4','lib/jszip.min.js','lib/pptxgen.min.js','lib/pdf.min.mjs','lib/pdf.worker.min.mjs',
 'manifest.webmanifest','icons/icon.svg','icons/icon-192.png','icons/icon-512.png','icons/icon-32.png','icons/apple-touch-icon.png',
 'fonts/russo-one-cyrillic-400-normal.woff2','fonts/russo-one-latin-400-normal.woff2','fonts/tektur-cyrillic-400-normal.woff2','fonts/tektur-cyrillic-700-normal.woff2','fonts/tektur-latin-400-normal.woff2','fonts/tektur-latin-700-normal.woff2',
 'fonts/jetbrains-mono-cyrillic-400-normal.woff2','fonts/jetbrains-mono-cyrillic-700-normal.woff2','fonts/jetbrains-mono-latin-400-normal.woff2','fonts/jetbrains-mono-latin-700-normal.woff2',

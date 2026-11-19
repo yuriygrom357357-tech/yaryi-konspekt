@@ -843,7 +843,7 @@ $('#doInstall').onclick=async()=>{
   else { instHint(); toast('Скористайтеся підказкою під кнопкою',3500); }
 };
 $('#dlOffline').href = isFileMode ? ONLINE_URL+'yaryi-offline.zip' : 'yaryi-offline.zip';
-if(isStandalone()) $('#btnInstall').textContent='⤓ Офлайн';
+if(isStandalone()) $('#btnInstall').title='Офлайн-папка';
 function netState(showToast){
   const on=navigator.onLine, n=$('#net'); if(!n) return;
   n.classList.toggle('off',!on); n.querySelector('span').textContent=on?'ОНЛАЙН':'ОФЛАЙН';
