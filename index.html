@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#16181a">
+<title>ЯРИЙ — помічник конспектів</title>
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+@font-face{font-family:Russo;src:url(fonts/russo-one-cyrillic-400-normal.woff2) format('woff2');unicode-range:U+0400-04FF}
+@font-face{font-family:Russo;src:url(fonts/russo-one-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-03FF,U+2000-2BFF}
+@font-face{font-family:Tektur;font-weight:400;src:url(fonts/tektur-cyrillic-400-normal.woff2) format('woff2');unicode-range:U+0400-04FF}
+@font-face{font-family:Tektur;font-weight:400;src:url(fonts/tektur-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-03FF,U+2000-2BFF}
+@font-face{font-family:Tektur;font-weight:700;src:url(fonts/tektur-cyrillic-700-normal.woff2) format('woff2');unicode-range:U+0400-04FF}
+@font-face{font-family:Tektur;font-weight:700;src:url(fonts/tektur-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-03FF,U+2000-2BFF}
+@font-face{font-family:Mono;font-weight:400;src:url(fonts/jetbrains-mono-cyrillic-400-normal.woff2) format('woff2');unicode-range:U+0400-04FF}
+@font-face{font-family:Mono;font-weight:400;src:url(fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-03FF,U+2000-2BFF}
+@font-face{font-family:Mono;font-weight:700;src:url(fonts/jetbrains-mono-cyrillic-700-normal.woff2) format('woff2');unicode-range:U+0400-04FF}
+@font-face{font-family:Mono;font-weight:700;src:url(fonts/jetbrains-mono-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-03FF,U+2000-2BFF}
+@font-face{font-family:Golos;font-weight:400;src:url(fonts/golos-cyrillic-400.woff2) format('woff2');unicode-range:U+0400-04FF}
+@font-face{font-family:Golos;font-weight:400;src:url(fonts/golos-latin-400.woff2) format('woff2');unicode-range:U+0000-03FF,U+2000-2BFF}
+@font-face{font-family:Golos;font-weight:600;src:url(fonts/golos-cyrillic-600.woff2) format('woff2');unicode-range:U+0400-04FF}
+@font-face{font-family:Golos;font-weight:600;src:url(fonts/golos-latin-600.woff2) format('woff2');unicode-range:U+0000-03FF,U+2000-2BFF}
+
+:root{
+  --steel-0:#0f1112; --steel-1:#16181a; --steel-2:#1f2225; --steel-3:#2a2e32; --steel-4:#3a3f44;
+  --edge:#4b5157; --text:#e6e3da; --muted:#9aa09a; --dim:#6d736f;
+  --olive:#5b6340; --olive-2:#737b4f; --tan:#c8b27a; --brass:#c9a24a; --brass-2:#e2bf63;
+  --red:#c2412d; --green:#7fbf4f; --r:6px;
+  --display:Russo,Tektur,system-ui,sans-serif; --ui:Tektur,system-ui,sans-serif; --mono:Mono,ui-monospace,monospace; --body:Golos,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{
+  font-family:var(--body);color:var(--text);min-height:100vh;
+  background:
+    radial-gradient(1200px 600px at 70% -10%,rgba(201,162,74,.07),transparent 60%),
+    repeating-linear-gradient(115deg,rgba(255,255,255,.012) 0 2px,transparent 2px 5px),
+    linear-gradient(180deg,#131517,#0c0d0e);
+}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--brass-2)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 18px}
+
+/* ---------- RAIL HEADER ---------- */
+.rail{height:14px;background:
+  repeating-linear-gradient(90deg,#2b2f33 0 14px,#111315 14px 22px);
+  border-bottom:1px solid #000;box-shadow:inset 0 3px 0 #3d4247,inset 0 -2px 0 #0a0b0c}
+header.top{background:linear-gradient(180deg,#1d2023,#15171a);border-bottom:2px solid #000;box-shadow:0 2px 0 #2c3135}
+.top .wrap{display:flex;align-items:center;gap:16px;padding-top:14px;padding-bottom:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:14px;flex:1;min-width:260px}
+.brand svg{flex:none}
+.brand h1{margin:0;font-family:var(--display);font-size:34px;letter-spacing:.06em;line-height:1;
+  color:#d9d4c4;text-shadow:0 1px 0 #000,0 -1px 0 rgba(255,255,255,.08)}
+.brand .sub{font-family:var(--ui);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--tan);margin-top:6px}
+.serial{font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.12em;margin-top:5px}
+.top-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* ---------- BUTTONS ---------- */
+.btn{font-family:var(--ui);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:13px;
+  border:1px solid #000;border-radius:var(--r);padding:11px 16px;cursor:pointer;
+  background:linear-gradient(180deg,#3a3f44,#26292d);color:#e8e4d8;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 2px 0 #000,0 3px 6px rgba(0,0,0,.4);
+  transition:transform .08s,filter .15s,box-shadow .15s;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{filter:brightness(1.15)}
+.btn:active{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 0 0 #000}
+.btn:focus-visible{outline:2px solid var(--brass-2);outline-offset:2px}
+.btn.olive{background:linear-gradient(180deg,#6e7650,#4c5235)}
+.btn.brass{background:linear-gradient(180deg,#e3c46c,#a9832f);color:#1a1405;text-shadow:0 1px 0 rgba(255,255,255,.3)}
+.btn.ghost{background:transparent;box-shadow:none;border-color:var(--edge)}
+.btn.sm{padding:7px 10px;font-size:11.5px}
+.btn[disabled]{opacity:.45;cursor:not-allowed;filter:none}
+
+/* status LED */
+.led{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;
+  padding:8px 12px;border:1px solid #000;border-radius:var(--r);background:#0d0f10;box-shadow:inset 0 2px 4px rgba(0,0,0,.6);cursor:pointer}
+.led i{width:10px;height:10px;border-radius:50%;background:#5a1f17;box-shadow:0 0 0 2px #000}
+.led.on i{background:var(--green);box-shadow:0 0 0 2px #000,0 0 10px var(--green)}
+.led.off i{background:var(--red);box-shadow:0 0 0 2px #000,0 0 8px rgba(194,65,45,.7)}
+
+/* ---------- SELECTOR (fire mode) ---------- */
+.selector{display:flex;align-items:center;gap:14px;padding:14px 16px;margin:18px 0 6px;
+  background:linear-gradient(180deg,#24282b,#1a1d20);border:1px solid #000;border-radius:10px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 3px 10px rgba(0,0,0,.4)}
+.sel-title{font-family:var(--ui);font-size:11px;letter-spacing:.24em;color:var(--muted);text-transform:uppercase;width:92px;line-height:1.3}
+.sel-track{position:relative;display:flex;flex:1;max-width:560px;background:#0c0e0f;border:1px solid #000;border-radius:40px;padding:4px;box-shadow:inset 0 2px 6px rgba(0,0,0,.8)}
+.sel-opt{flex:1;position:relative;z-index:1;border:0;background:none;cursor:pointer;padding:10px 12px;border-radius:40px;text-align:center;
+  font-family:var(--ui);font-weight:700;letter-spacing:.1em;font-size:13px;color:var(--dim);transition:color .2s}
+.sel-opt small{display:block;font-family:var(--mono);font-weight:400;letter-spacing:.04em;font-size:10.5px;margin-top:2px}
+.sel-opt[aria-checked=true]{color:#16120a}
+.sel-lever{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:40px;
+  background:linear-gradient(180deg,#e3c46c,#a37c2a);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 2px 6px rgba(0,0,0,.6);
+  transition:transform .35s cubic-bezier(.3,1.5,.5,1)}
+.selector[data-mode=ai] .sel-lever{transform:translateX(100%)}
+.sel-pct{font-family:var(--display);font-size:30px;color:var(--brass-2);width:84px;text-align:right;text-shadow:0 0 12px rgba(226,191,99,.25)}
+
+/* ---------- LAYOUT ---------- */
+main{padding:10px 0 40px}
+.grid{display:grid;grid-template-columns:minmax(0,430px) minmax(0,1fr);gap:22px;align-items:start}
+@media(max-width:980px){.grid{grid-template-columns:1fr}}
+
+.panel{background:linear-gradient(180deg,#22262a,#1a1d20);border:1px solid #000;border-radius:10px;margin-bottom:16px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 4px 14px rgba(0,0,0,.35);position:relative;overflow:hidden}
+.panel::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 1px,transparent 1px 3px)}
+.ph{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #000;background:linear-gradient(180deg,#2b3034,#22262a)}
+.ph .num{font-family:var(--display);font-size:15px;width:30px;height:30px;display:grid;place-items:center;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#e8cc7a,#9c7426);color:#1a1405;box-shadow:0 0 0 2px #000,inset 0 -2px 3px rgba(0,0,0,.35)}
+.ph h2{margin:0;font-family:var(--ui);font-weight:700;font-size:15px;letter-spacing:.16em;text-transform:uppercase}
+.ph .hint{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.08em}
+.pb{padding:14px 16px 16px;position:relative}
+
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tab{flex:1;border:1px solid #000;border-radius:var(--r);background:#121416;color:var(--muted);padding:9px;cursor:pointer;
+  font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:.1em;text-transform:uppercase;box-shadow:inset 0 2px 4px rgba(0,0,0,.6)}
+.tab[aria-selected=true]{background:linear-gradient(180deg,#6e7650,#4c5235);color:#f1eedf;box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
+
+label.f{display:block;margin:0 0 10px}
+label.f>span{display:block;font-family:var(--ui);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.inp,select.inp,textarea.inp{width:100%;background:#0e1011;border:1px solid #000;border-radius:var(--r);padding:10px 11px;color:var(--text);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.05);outline:none;font-size:14px}
+.inp:focus{border-color:var(--brass);box-shadow:inset 0 2px 5px rgba(0,0,0,.7),0 0 0 2px rgba(201,162,74,.25)}
+select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--tan) 50%),linear-gradient(135deg,var(--tan) 50%,transparent 50%);
+  background-position:calc(100% - 17px) 55%,calc(100% - 12px) 55%;background-size:5px 5px;background-repeat:no-repeat;padding-right:30px}
+textarea.inp{resize:vertical;min-height:84px;line-height:1.45}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+
+.lesson-card{margin-top:4px;padding:12px;border-radius:var(--r);background:#121416;border:1px dashed #3c4247;font-size:13px;line-height:1.45;color:#cfcabd}
+.lesson-card b{font-family:var(--ui);letter-spacing:.06em;color:var(--tan);font-weight:700}
+.lesson-card ul{margin:6px 0 0;padding-left:18px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.chip{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:20px;background:#262a2e;border:1px solid #000;color:var(--tan)}
+
+/* dropzone = magazine well */
+.drop{border:2px dashed #4a5056;border-radius:10px;padding:16px;text-align:center;cursor:pointer;background:#111315;transition:.2s;position:relative}
+.drop:hover,.drop.over{border-color:var(--brass);background:#16181a}
+.drop b{font-family:var(--ui);letter-spacing:.1em;display:block;margin:6px 0 2px;font-size:13px}
+.drop small{color:var(--dim);font-size:12px}
+.files{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.file{display:flex;align-items:center;gap:8px;font-size:12.5px;background:#121416;border:1px solid #000;border-radius:var(--r);padding:7px 9px}
+.file .x{margin-left:auto;background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px}
+.warn{font-size:11.5px;color:#d9a35a;margin-top:8px;line-height:1.4}
+details.req summary{cursor:pointer;list-style:none}
+details.req summary::-webkit-details-marker{display:none}
+
+/* magazine progress */
+.mag{display:flex;align-items:center;gap:10px;margin:4px 0 12px}
+.mag-body{display:flex;gap:3px;padding:5px 6px;background:#0d0f10;border:1px solid #000;border-radius:4px 4px 10px 10px;transform:skewX(-8deg);box-shadow:inset 0 2px 4px rgba(0,0,0,.7)}
+.round{width:9px;height:22px;border-radius:5px 5px 2px 2px;background:#2a2e32;box-shadow:inset 0 -6px 0 #202326;transition:.25s}
+.round.full{background:linear-gradient(180deg,#e7c86e 0 45%,#b08a33 45% 100%);box-shadow:inset 0 -6px 0 #8a6a24}
+.mag-label{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.06em}
+
+/* TRIGGER */
+.fire{width:100%;margin-top:6px;position:relative;border:0;cursor:pointer;padding:0;background:none}
+.fire .guard{display:flex;align-items:center;justify-content:center;gap:14px;padding:18px;border-radius:14px 14px 40px 40px;
+  background:linear-gradient(180deg,#c13d2a,#7d2215);border:1px solid #000;color:#fff2e0;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 4px 0 #2a0b06,0 8px 18px rgba(0,0,0,.5);transition:transform .08s,box-shadow .08s}
+.fire .guard span{font-family:var(--display);font-size:22px;letter-spacing:.1em}
+.fire .guard small{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;opacity:.8}
+.fire:hover .guard{filter:brightness(1.1)}
+.fire:active .guard{transform:translateY(4px);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 0 0 #2a0b06}
+.fire[disabled]{cursor:wait}
+.fire.busy .guard{background:repeating-linear-gradient(45deg,#7d2215 0 14px,#5e190f 14px 28px);background-size:200% 100%;animation:stripes 1s linear infinite}
+@keyframes stripes{to{background-position:-40px 0}}
+.recoil{animation:recoil .32s ease-out}
+@keyframes recoil{0%{transform:translateX(0)}20%{transform:translate(-6px,2px) rotate(-.6deg)}50%{transform:translate(3px,-1px)}100%{transform:none}}
+.flash{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 60%,rgba(255,200,90,.35),transparent 50%);opacity:0;z-index:50}
+.flash.go{animation:flash .35s ease-out}
+@keyframes flash{0%{opacity:1}100%{opacity:0}}
+
+/* ---------- DOCUMENT ---------- */
+.docbar{position:sticky;top:0;z-index:5;display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 12px;margin-bottom:12px;
+  background:rgba(22,24,26,.94);backdrop-filter:blur(6px);border:1px solid #000;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.docbar .lbl{font-family:var(--ui);font-size:11px;letter-spacing:.2em;color:var(--muted);margin-right:4px}
+.round-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid #000;border-radius:6px 22px 22px 6px;cursor:pointer;
+  padding:9px 16px 9px 10px;font-family:var(--ui);font-weight:700;font-size:12.5px;letter-spacing:.08em;color:#1a1405;
+  background:linear-gradient(90deg,#8d6a22 0 10px,#e2c269 10px 40%,#b8922f 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 2px 0 #000}
+.round-btn:hover{filter:brightness(1.08)}
+.round-btn:active{transform:translateY(2px);box-shadow:none}
+.round-btn.steel{background:linear-gradient(90deg,#2b2f33 0 10px,#5a6066 10px 40%,#3c4146 100%);color:#eee}
+.saved-tag{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--dim)}
+
+.empty{border:2px dashed #33383d;border-radius:12px;padding:46px 24px;text-align:center;color:var(--muted)}
+.empty h3{font-family:var(--display);font-size:22px;letter-spacing:.06em;color:#cfc9b8;margin:12px 0 6px}
+.empty p{margin:4px auto;max-width:440px;line-height:1.5;font-size:14px}
+
+.paper-wrap{background:#2a2d30;border:1px solid #000;border-radius:10px;padding:22px;box-shadow:inset 0 2px 10px rgba(0,0,0,.6);overflow:auto}
+.sheet{background:#fff;color:#000;width:100%;max-width:794px;margin:0 auto;padding:56px 48px 56px 76px;
+  font-family:"Times New Roman",Times,serif;font-size:14pt;line-height:1.25;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+@media(max-width:640px){.sheet{padding:28px 18px;font-size:12pt}.paper-wrap{padding:8px}}
+.sheet [contenteditable]{outline:none;border-radius:2px}
+.sheet [contenteditable]:hover{background:#fff8dc}
+.sheet [contenteditable]:focus{background:#fff3c4;box-shadow:0 0 0 1px #d9b44a}
+.sheet .approve{margin-left:52%;margin-bottom:18px}
+.sheet .center{text-align:center}
+.sheet .title{text-align:center;font-weight:bold;margin:8px 0 2px;letter-spacing:.02em}
+.sheet p{margin:0 0 6px;text-align:justify}
+.sheet .lbl{font-weight:bold}
+.sheet h4{font-size:14pt;text-align:center;margin:16px 0 8px;font-weight:bold}
+.sheet h5{font-size:14pt;margin:12px 0 6px;font-weight:bold}
+.sheet table{width:100%;border-collapse:collapse;margin:6px 0 10px}
+.sheet td,.sheet th{border:1px solid #000;padding:5px 7px;vertical-align:top;font-size:13pt;text-align:left}
+.sheet th{text-align:center;font-weight:bold}
+.sheet td.q{width:34%;font-weight:bold}
+.sheet mark.ph{background:#ffe9a8;color:inherit;padding:0 1px}
+.sheet .rowtools{white-space:nowrap}
+.sheet .tool{font:12px var(--ui);border:1px solid #bbb;background:#f3f1ea;border-radius:4px;cursor:pointer;padding:2px 6px;margin:2px}
+.addrow{margin:4px 0 0;font:12px var(--ui);border:1px dashed #999;background:#faf8f2;border-radius:4px;cursor:pointer;padding:5px 9px}
+.ai-badge{display:inline-block;font:10px var(--mono);background:#e9f3e0;color:#2f5a18;border:1px solid #b9d6a1;border-radius:10px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+
+/* ---------- MODALS ---------- */
+.modal{position:fixed;inset:0;z-index:100;display:none;align-items:flex-start;justify-content:center;padding:4vh 14px;background:rgba(5,6,7,.78);backdrop-filter:blur(3px);overflow:auto}
+.modal.open{display:flex}
+.mbox{width:100%;max-width:640px;background:linear-gradient(180deg,#24282c,#1a1d20);border:1px solid #000;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.7);overflow:hidden}
+.mhead{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #000;background:linear-gradient(180deg,#30353a,#25292d)}
+.mhead h3{margin:0;font-family:var(--display);font-size:19px;letter-spacing:.06em}
+.mhead .close{margin-left:auto;background:none;border:0;color:var(--muted);font-size:26px;cursor:pointer;line-height:1}
+.mbody{padding:16px 18px 20px;line-height:1.55;font-size:14.5px}
+.mbody h4{font-family:var(--ui);letter-spacing:.14em;text-transform:uppercase;font-size:13px;color:var(--tan);margin:16px 0 6px}
+.mbody ol,.mbody ul{padding-left:20px;margin:6px 0}
+.mbody li{margin:3px 0}
+.pct-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.pct{border:1px solid #000;border-radius:10px;padding:12px;background:#121416}
+.pct .big{font-family:var(--display);font-size:34px;color:var(--brass-2)}
+.pct.ai .big{color:var(--green)}
+.pct b{font-family:var(--ui);letter-spacing:.08em}
+.pct ul{font-size:13px;margin-top:6px}
+
+.steps{counter-reset:s;list-style:none;padding:0!important}
+.steps>li{counter-increment:s;position:relative;padding:12px 12px 12px 54px;margin:10px 0!important;background:#121416;border:1px solid #000;border-radius:10px}
+.steps>li::before{content:counter(s);position:absolute;left:12px;top:12px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+  font-family:var(--display);background:radial-gradient(circle at 35% 30%,#e8cc7a,#9c7426);color:#1a1405;box-shadow:0 0 0 2px #000}
+.steps>li.done::before{content:"✓";background:radial-gradient(circle at 35% 30%,#a8e07a,#4d8a25)}
+.steps b{font-family:var(--ui);letter-spacing:.05em}
+.mock{margin-top:8px;border-radius:8px;background:#fff;color:#202124;padding:10px 12px;font:13px Arial,sans-serif;display:flex;align-items:center;gap:10px}
+.mock .gbtn{background:#0b57d0;color:#fff;border-radius:18px;padding:7px 14px;font-weight:600;white-space:nowrap}
+.mock .key{font-family:monospace;background:#f1f3f4;border-radius:4px;padding:4px 8px;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.keyrow{display:flex;gap:8px;margin-top:8px}
+.keyrow .inp{font-family:var(--mono);font-size:13px}
+.msg{margin-top:8px;font-size:13px;min-height:18px}
+.msg.ok{color:var(--green)}.msg.err{color:#ff8a70}
+
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(30px);opacity:0;z-index:120;
+  background:#0d0f10;border:1px solid var(--brass);color:var(--text);padding:11px 16px;border-radius:8px;font-size:14px;transition:.25s;box-shadow:0 8px 24px rgba(0,0,0,.6);max-width:92vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.hist{display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow:auto}
+.hitem{display:flex;gap:10px;align-items:center;background:#121416;border:1px solid #000;border-radius:8px;padding:9px 11px;cursor:pointer}
+.hitem:hover{border-color:var(--brass)}
+.hitem small{display:block;color:var(--dim);font-family:var(--mono);font-size:10.5px}
+.hitem .del{margin-left:auto;background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px}
+
+footer{border-top:2px solid #000;box-shadow:0 -1px 0 #2c3135;background:linear-gradient(180deg,#17191b,#101213);padding:20px 0 28px;margin-top:20px}
+footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.credit{font-family:var(--ui);font-size:13px;letter-spacing:.04em;line-height:1.6}
+.credit b{color:var(--tan);font-weight:700}
+.credit .small{font-size:11.5px;color:var(--dim)}
+.stamp{font-family:var(--mono);font-size:11px;color:var(--dim);border:1px solid #2f3337;padding:6px 10px;border-radius:4px;letter-spacing:.1em}
+
+
+@media(max-width:640px){
+  .selector{gap:8px;padding:10px}
+  .sel-title{display:none}
+  .sel-opt{padding:8px 6px;font-size:12px}
+  .sel-opt small{font-size:9.5px}
+  .sel-pct{font-size:22px;width:auto}
+  .brand h1{font-size:28px}
+  .serial{display:none}
+  .sheet .approve{margin-left:30%}
+  .sheet p{text-align:left}
+  .docbar .lbl{display:none}
+  .round-btn{padding:8px 12px 8px 9px;font-size:11.5px}
+}
+#pasteKey{white-space:nowrap}
+
+@media print{
+  body{background:#fff!important}
+  body *{visibility:hidden!important}
+  #sheet,#sheet *{visibility:visible!important}
+  #sheet{position:absolute;left:0;top:0;width:100%;max-width:none;box-shadow:none;padding:0;margin:0;font-size:14pt}
+  .rowtools,.addrow,.ai-badge{display:none!important}
+  .sheet [contenteditable]:hover,.sheet [contenteditable]:focus{background:none;box-shadow:none}
+  .sheet mark.ph{background:none!important}
+  @page{size:A4;margin:20mm 15mm 20mm 30mm}
+}
+</style>
+</head>
+<body>
+<div class="flash" id="flash"></div>
+<div class="rail"></div>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <svg width="58" height="58" viewBox="0 0 64 64" aria-hidden="true">
+        <defs><radialGradient id="g1" cx="35%" cy="30%"><stop offset="0" stop-color="#ecd081"/><stop offset="1" stop-color="#8f6a21"/></radialGradient></defs>
+        <polygon points="32,3 58,17 58,47 32,61 6,47 6,17" fill="#202326" stroke="#000" stroke-width="2"/>
+        <polygon points="32,8 54,20 54,44 32,56 10,44 10,20" fill="none" stroke="#4b5157" stroke-width="1.5"/>
+        <circle cx="32" cy="32" r="15" fill="none" stroke="url(#g1)" stroke-width="3"/>
+        <line x1="32" y1="11" x2="32" y2="21" stroke="url(#g1)" stroke-width="3"/><line x1="32" y1="43" x2="32" y2="53" stroke="url(#g1)" stroke-width="3"/>
+        <line x1="11" y1="32" x2="21" y2="32" stroke="url(#g1)" stroke-width="3"/><line x1="43" y1="32" x2="53" y2="32" stroke="url(#g1)" stroke-width="3"/>
+        <circle cx="32" cy="32" r="3.2" fill="#c2412d"/>
+      </svg>
+      <div>
+        <h1>ЯРИЙ</h1>
+        <div class="sub">Помічник конспектів</div>
+        <div class="serial">ПК-158 · СЕР. № 2026-0001 · КАЛІБР: ПЛАН-КОНСПЕКТ</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="led off" id="ledKey" title="Стан підключення Gemini"><i></i><span>GEMINI: НЕ ПІДКЛЮЧЕНО</span></button>
+      <button class="btn ghost sm" id="btnHist" title="Збережені конспекти">▤ Збережені</button>
+      <button class="btn sm" id="btnInfo">ℹ Інформація</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="selector" id="selector" data-mode="basic">
+    <div class="sel-title">Режим<br>вогню</div>
+    <div class="sel-track" role="radiogroup" aria-label="Режим роботи">
+      <div class="sel-lever"></div>
+      <button class="sel-opt" role="radio" aria-checked="true" data-mode="basic">ОД · БАЗОВИЙ<small>без ШІ · шаблон + програма</small></button>
+      <button class="sel-opt" role="radio" aria-checked="false" data-mode="ai">АВ · GEMINI<small>повний режим з ШІ</small></button>
+    </div>
+    <div class="sel-pct" id="selPct">80%</div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: inputs -->
+    <section>
+      <div class="panel">
+        <div class="ph"><div class="num">1</div><h2>Заняття</h2><span class="hint">що проводимо</span></div>
+        <div class="pb">
+          <div class="tabs" role="tablist">
+            <button class="tab" role="tab" aria-selected="true" data-src="prog">З програми 35 діб</button>
+            <button class="tab" role="tab" aria-selected="false" data-src="own">Своя тема</button>
+          </div>
+          <div id="srcProg">
+            <label class="f"><span>Курс / модуль</span><select class="inp" id="selMod"></select></label>
+            <label class="f"><span>Предмет</span><select class="inp" id="selSubj"></select></label>
+            <label class="f"><span>Тема</span><select class="inp" id="selTheme"></select></label>
+            <label class="f"><span>Заняття</span><select class="inp" id="selLesson"></select></label>
+            <div class="lesson-card" id="lessonCard"></div>
+          </div>
+          <div id="srcOwn" hidden>
+            <label class="f"><span>Предмет</span><input class="inp" id="ownSubj" placeholder="напр. Тактична підготовка"></label>
+            <label class="f"><span>Тема № і назва</span><input class="inp" id="ownTheme" placeholder="напр. 3. Оборонний бій"></label>
+            <label class="f"><span>Заняття № і назва</span><input class="inp" id="ownLesson" placeholder="напр. 1. Позиції відділення в обороні"></label>
+            <div class="row2">
+              <label class="f"><span>Годин</span><input class="inp" id="ownHours" type="number" min="1" max="12" value="1"></label>
+              <label class="f"><span>Метод</span><input class="inp" id="ownMethod" placeholder="лекція / тренування"></label>
+            </div>
+            <label class="f"><span>Навчальні питання (кожне з нового рядка, необов’язково)</span><textarea class="inp" id="ownQ" placeholder="1. ...&#10;2. ..."></textarea></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><div class="num">2</div><h2>Матеріали</h2><span class="hint">необов’язково</span></div>
+        <div class="pb">
+          <div class="drop" id="drop" tabindex="0" role="button" aria-label="Завантажити презентацію">
+            <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect x="12" y="4" width="16" height="30" rx="3" fill="#2a2e32" stroke="#000"/><rect x="15" y="8" width="10" height="5" rx="2" fill="#c9a24a"/><rect x="15" y="15" width="10" height="5" rx="2" fill="#c9a24a"/><rect x="15" y="22" width="10" height="5" rx="2" fill="#c9a24a" opacity=".5"/><path d="M14 34 L26 34 L24 38 L16 38Z" fill="#1a1d20" stroke="#000"/></svg>
+            <b>ЗАРЯДИТИ ПРЕЗЕНТАЦІЮ</b>
+            <small>PPTX, PDF, DOCX або TXT · перетягніть сюди або натисніть</small>
+            <input type="file" id="file" accept=".pptx,.pdf,.docx,.txt,.md" multiple hidden>
+          </div>
+          <div class="files" id="files"></div>
+          <label class="f" style="margin-top:12px"><span>Нотатки / свій текст</span><textarea class="inp" id="notes" placeholder="Вставте тези, текст лекції або вказівки — їх буде враховано у «Короткому змісті»"></textarea></label>
+          <div class="warn">⚠ Не завантажуйте матеріали з грифом обмеженого доступу: у режимі Gemini текст передається на сервери Google.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <details class="req" id="reqBox">
+          <summary class="ph"><div class="num">3</div><h2>Реквізити</h2><span class="hint" id="reqHint">запам’ятовуються ▾</span></summary>
+          <div class="pb">
+            <label class="f"><span>«Затверджую» — посада</span><input class="inp" data-req="apPos" placeholder="напр. Командир навчального батальйону"></label>
+            <label class="f"><span>«Затверджую» — звання, ініціали, прізвище</span><input class="inp" data-req="apName" placeholder="напр. майор Іван ПЕТРЕНКО"></label>
+            <label class="f"><span>З особовим складом (підрозділ / група)</span><input class="inp" data-req="unit" placeholder="напр. навчального взводу КВ"></label>
+            <label class="f"><span>Керівник заняття — звання, ініціали, прізвище</span><input class="inp" data-req="leader" placeholder="напр. старший сержант Ярослав ДУДКО"></label>
+            <div class="row2">
+              <label class="f"><span>Скорочення для назви файлу</span><input class="inp" data-req="fileTag" placeholder="КВ"></label>
+              <label class="f"><span>Хвилин в академ. годині</span><select class="inp" data-req="hourMin"><option>45</option><option>50</option><option>60</option></select></label>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div class="mag" aria-hidden="true"><div class="mag-body" id="mag"></div><div class="mag-label" id="magLabel">ГОТОВНІСТЬ 0/10</div></div>
+      <button class="fire" id="fire">
+        <div class="guard">
+          <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><path d="M8 6 h18 v6 h-4 c-2 8 -2 12 2 18 h-6 c-4 -6 -4 -11 -2 -18 h-8z" fill="#fff2e0" opacity=".95"/><circle cx="21" cy="9" r="1.6" fill="#7d2215"/></svg>
+          <div><span>СФОРМУВАТИ</span><small id="fireSub">базовий режим · шаблон + програма</small></div>
+        </div>
+      </button>
+    </section>
+
+    <!-- RIGHT: document -->
+    <section>
+      <div class="docbar" id="docbar" hidden>
+        <span class="lbl">ЗБЕРЕГТИ:</span>
+        <button class="round-btn" id="exDocx">▮ WORD</button>
+        <button class="round-btn" id="exPdf">▮ PDF</button>
+        <button class="round-btn steel" id="exPrint">⎙ ДРУК</button>
+        <button class="round-btn steel" id="exTxt">TXT</button>
+        <button class="round-btn steel" id="exCopy">⧉ КОПІЮВАТИ</button>
+        <button class="btn ghost sm" id="exAi" hidden title="Перегенерувати короткий зміст через Gemini">✨ Покращити зміст</button>
+        <span class="saved-tag" id="savedTag"></span>
+      </div>
+      <div id="docArea">
+        <div class="empty" id="empty">
+          <svg width="76" height="76" viewBox="0 0 64 64" aria-hidden="true"><rect x="14" y="6" width="36" height="50" rx="2" fill="#2a2e32" stroke="#000" stroke-width="2"/><g stroke="#5a6066" stroke-width="3"><line x1="20" y1="18" x2="44" y2="18"/><line x1="20" y1="26" x2="44" y2="26"/><line x1="20" y1="34" x2="38" y2="34"/></g><circle cx="44" cy="48" r="11" fill="#1a1d20" stroke="#c9a24a" stroke-width="2.5"/><line x1="44" y1="40" x2="44" y2="56" stroke="#c9a24a" stroke-width="2"/><line x1="36" y1="48" x2="52" y2="48" stroke="#c9a24a" stroke-width="2"/></svg>
+          <h3>ЦІЛЬ НЕ ВИЗНАЧЕНА</h3>
+          <p>Оберіть заняття зліва, за бажанням зарядіть презентацію — і натисніть червоний <b>«СФОРМУВАТИ»</b>.</p>
+          <p style="color:var(--dim);font-size:13px">Готовий план-конспект з’явиться тут. Його можна редагувати прямо на аркуші й зберегти у Word, PDF або роздрукувати.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="credit">
+      Автор ідеї — <b>Ярослав Дудко</b>, військовослужбовець ЗСУ<br>
+      <b>158-й навчальний центр</b><br>
+      <span class="small">Розробник — Юрій Мельничук (позивний «Композитор»)</span>
+    </div>
+    <div class="stamp">ЯРИЙ · v1.0 · 2026</div>
+  </div>
+</footer>
+
+<!-- INFO -->
+<div class="modal" id="mInfo" role="dialog" aria-modal="true" aria-labelledby="mInfoT">
+  <div class="mbox">
+    <div class="mhead"><h3 id="mInfoT">ℹ ІНФОРМАЦІЯ</h3><button class="close" data-close aria-label="Закрити">×</button></div>
+    <div class="mbody">
+      <p><b>«Ярий»</b> складає план-конспект заняття за затвердженим шаблоном: «Затверджую», реквізити, хід заняття (вступна частина — 2 хв, основна частина з таблицею «Навчальні питання / Короткий зміст», заключна частина) і підпис керівника. Times New Roman 14, як у зразках.</p>
+      <h4>Два режими роботи</h4>
+      <div class="pct-row">
+        <div class="pct ai"><div class="big">100%</div><b>АВ · З GEMINI</b>
+          <ul><li>усе з базового режиму;</li><li>Gemini пише змістовний «Короткий зміст» до кожного питання з вашої презентації;</li><li>формулює мету, матеріальне забезпечення, керівництва;</li><li>працює і без презентації — складає зміст за темою;</li><li>кнопка «✨ Покращити зміст».</li></ul></div>
+        <div class="pct"><div class="big">80%</div><b>ОД · БАЗОВИЙ</b>
+          <ul><li>без ключа, безкоштовно, працює навіть офлайн;</li><li>реквізити, тема, заняття, час, метод і навчальні питання — з програми;</li><li>вступна та заключна частини — автоматично;</li><li>текст слайдів розкладається по питаннях;</li><li>те, чого бракує, позначається <span style="background:#ffe9a8;color:#000;padding:0 4px">[жовтим]</span> — допишіть вручну.</li></ul></div>
+      </div>
+      <h4>Як користуватися — 4 кроки</h4>
+      <ol>
+        <li><b>Заняття.</b> Оберіть курс → предмет → тему → заняття з програми 35 діб. Або вкладка «Своя тема» — для будь-якого іншого заняття.</li>
+        <li><b>Матеріали.</b> За бажанням «зарядіть» презентацію (PPTX, PDF, DOCX, TXT) або вставте нотатки.</li>
+        <li><b>Реквізити.</b> Один раз заповніть посади та прізвища — додаток їх запам’ятає.</li>
+        <li><b>«СФОРМУВАТИ».</b> Перевірте аркуш, виправте що треба прямо на ньому (клацніть по тексту) і натисніть WORD, PDF або ДРУК.</li>
+      </ol>
+      <h4>Як підключити Gemini (1 хвилина, безкоштовно)</h4>
+      <p>Натисніть індикатор <b>«GEMINI»</b> вгорі або перемкніть режим на <b>«АВ · GEMINI»</b> — відкриється покрокова інструкція. Знадобиться лише ваш Google-акаунт. Ключ зберігається тільки у вашому браузері й нікуди, крім Google, не передається. Працює на вашому безкоштовному ліміті Gemini.</p>
+      <h4>Корисно знати</h4>
+      <ul>
+        <li>Збережені конспекти — кнопка «▤ Збережені» (зберігаються в цьому браузері).</li>
+        <li>PDF: у вікні друку оберіть «Зберегти як PDF».</li>
+        <li>Перевіряйте зміст, створений ШІ: відповідальність за конспект — на керівникові заняття.</li>
+        <li>Не завантажуйте матеріали з грифом обмеженого доступу.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- KEY WIZARD -->
+<div class="modal" id="mKey" role="dialog" aria-modal="true" aria-labelledby="mKeyT">
+  <div class="mbox">
+    <div class="mhead"><h3 id="mKeyT">⚡ ПІДКЛЮЧИТИ GEMINI</h3><button class="close" data-close aria-label="Закрити">×</button></div>
+    <div class="mbody">
+      <p style="margin-top:0">Безкоштовно, один раз, приблизно 1 хвилина. Потрібен тільки ваш Google-акаунт.</p>
+      <ol class="steps">
+        <li id="st1"><b>Відкрийте Google AI Studio</b><br><span style="color:var(--muted);font-size:13.5px">Увійдіть у свій Google-акаунт, якщо попросить. Погодьтеся з умовами, якщо з’явиться вікно.</span><br>
+          <a class="btn brass sm" style="margin-top:8px;text-decoration:none" id="openStudio" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">↗ Відкрити AI Studio</a></li>
+        <li id="st2"><b>Створіть ключ і скопіюйте його</b><br><span style="color:var(--muted);font-size:13.5px">Натисніть синю кнопку <b>«Create API key»</b> (Створити ключ API), потім значок копіювання біля ключа.</span>
+          <div class="mock"><span class="gbtn">+ Create API key</span><span class="key">AIzaSy••••••••••••••••••••••</span><span>⧉</span></div></li>
+        <li id="st3"><b>Вставте ключ сюди</b>
+          <div class="keyrow"><input class="inp" id="keyInp" placeholder="AIzaSy..." autocomplete="off" spellcheck="false"><button class="btn sm" id="pasteKey" title="Вставити з буфера обміну">⧉ Вставити</button></div>
+          <div class="keyrow"><button class="btn olive" id="saveKey" style="flex:1;justify-content:center">✓ Перевірити й підключити</button></div>
+          <div class="msg" id="keyMsg"></div></li>
+      </ol>
+      <p style="font-size:12.5px;color:var(--dim)">🔒 Ключ зберігається лише в цьому браузері. Щоб відключити — <a href="#" id="delKey">видалити ключ</a>.</p>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="modal" id="mHist" role="dialog" aria-modal="true" aria-labelledby="mHistT">
+  <div class="mbox">
+    <div class="mhead"><h3 id="mHistT">▤ ЗБЕРЕЖЕНІ КОНСПЕКТИ</h3><button class="close" data-close aria-label="Закрити">×</button></div>
+    <div class="mbody"><div class="hist" id="histList"></div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="lib/jszip.min.js"></script>
+<script src="data/program.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
