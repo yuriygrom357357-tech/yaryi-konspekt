@@ -256,6 +256,19 @@ header.top{position:relative}
 .prev-img{width:100%;height:auto;border-radius:8px;border:1px solid #000;display:block;margin:8px 0}
 .prev-note{font-size:13.5px;color:#cfcabd}
 
+
+.sheet.pdf-mode{box-shadow:none}
+.sheet.pdf-mode .rowtools,.sheet.pdf-mode .addrow{display:none!important}
+.sheet.pdf-mode mark.phm{background:none}
+.sheet.pdf-mode [contenteditable]:hover,.sheet.pdf-mode [contenteditable]:focus{background:none!important;box-shadow:none!important}
+
+
+.dv-bar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
+.dv-btns{display:flex;gap:8px}
+.doc-view{background:#3a3d40;border:1px solid #000;border-radius:8px;padding:16px;max-height:72vh;overflow:auto}
+.doc-view section.docx{margin:0 auto 16px!important;box-shadow:0 6px 20px rgba(0,0,0,.5)!important;color:#000;background:#fff!important}
+@media(max-width:640px){.doc-view{padding:6px}.doc-view section.docx{transform-origin:top left}}
+
 @media(max-width:640px){.sheet{padding:28px 18px;font-size:12pt}.paper-wrap{padding:8px}}
 .sheet [contenteditable]{outline:none;border-radius:2px}
 .sheet [contenteditable]:hover{background:#fff8dc}
@@ -505,6 +518,7 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
     <section>
       <div class="docbar" id="docbar" hidden>
         <span class="lbl">ЗБЕРЕГТИ:</span>
+        <button class="round-btn" id="exView" title="Відкрити готовий план-конспект у бланку">📄 ПЛАН-КОНСПЕКТ</button>
         <button class="round-btn" id="exDocx">▮ WORD</button>
         <button class="round-btn" id="exPdf">▮ PDF</button>
         <button class="round-btn" id="exPptx" title="Зробити слайди з цього конспекту">▶ ПРЕЗЕНТАЦІЯ</button>
@@ -552,7 +566,7 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
       <b>158-й навчальний центр</b><br>
       <span class="small">Розробник — Юрій Мельничук (позивний «Композитор»)</span>
     </div>
-    <div class="stamp">ЯРИЙ · v1.7 · 2026</div>
+    <div class="stamp">ЯРИЙ · v1.9 · 2026</div>
   </div>
 </footer>
 
@@ -591,7 +605,7 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
       <ul>
         <li>Встановлення на робочий стіл або офлайн-папка — кнопка «⤓ Встановити». З інтернетом працює повний режим, без інтернету — базовий.</li>
         <li>Збережені конспекти — кнопка «▤ Збережені» (зберігаються в цьому браузері).</li>
-        <li>PDF: у вікні друку оберіть «Зберегти як PDF».</li>
+        <li>PDF зберігається одразу файлом — у тому ж вигляді, що й Word (у бланку 158 НЦ, якщо він вибраний).</li>
         <li>Перевіряйте зміст, створений ШІ: відповідальність за конспект — на керівникові заняття.</li>
         <li>Не завантажуйте матеріали з грифом обмеженого доступу.</li>
       </ul>
@@ -647,6 +661,17 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
   </div>
 </div>
 
+<!-- KONSPEKT VIEW -->
+<div class="modal" id="mDoc" role="dialog" aria-modal="true" aria-labelledby="mDocT">
+  <div class="mbox wide">
+    <div class="mhead"><h3 id="mDocT">📄 ПЛАН-КОНСПЕКТ</h3><button class="close" data-close aria-label="Закрити">×</button></div>
+    <div class="mbody">
+      <div class="dv-bar"><span class="prev-note" id="docViewNote"></span><span class="dv-btns"><button class="round-btn" id="dvDocx">▮ WORD</button><button class="round-btn" id="dvPdf">▮ PDF</button></span></div>
+      <div class="doc-view" id="docView"></div>
+    </div>
+  </div>
+</div>
+
 <!-- TEMPLATE PREVIEW -->
 <div class="modal" id="mPrev" role="dialog" aria-modal="true" aria-labelledby="mPrevT">
   <div class="mbox wide">
@@ -666,8 +691,8 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
 <div class="toast" id="toast"></div>
 
 <script src="lib/jszip.min.js"></script>
-<script src="data/program.js?v=1.7"></script>
-<script src="tpl.js?v=1.7"></script>
-<script src="app.js?v=1.7"></script>
+<script src="data/program.js?v=1.9"></script>
+<script src="tpl.js?v=1.9"></script>
+<script src="app.js?v=1.9"></script>
 </body>
 </html>

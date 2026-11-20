@@ -1,5 +1,5 @@
-const C='yaryi-v8';
-const A=['./','index.html','app.js?v=1.7','data/program.js?v=1.7','lib/jszip.min.js','tpl.js?v=1.7','templates/konspekt-158-v1.docx','templates/konspekt-158-v2.docx','templates/prezentatsiya-158.pptx','lib/pptxgen.min.js','lib/pdf.min.mjs','lib/pdf.worker.min.mjs',
+const C='yaryi-v10';
+const A=['./','index.html','app.js?v=1.9','data/program.js?v=1.9','lib/jszip.min.js','tpl.js?v=1.9','templates/konspekt-158-v1.docx','templates/konspekt-158-v2.docx','templates/prezentatsiya-158.pptx','lib/pptxgen.min.js','lib/html2canvas.min.js','lib/jspdf.umd.min.js','lib/docx-preview.min.js','lib/pdf.min.mjs','lib/pdf.worker.min.mjs',
 'manifest.webmanifest','icons/icon.svg','icons/icon-192.png','icons/icon-512.png','icons/icon-32.png','icons/apple-touch-icon.png',
 'fonts/russo-one-cyrillic-400-normal.woff2','fonts/russo-one-latin-400-normal.woff2','fonts/tektur-cyrillic-400-normal.woff2','fonts/tektur-cyrillic-700-normal.woff2','fonts/tektur-latin-400-normal.woff2','fonts/tektur-latin-700-normal.woff2',
 'fonts/jetbrains-mono-cyrillic-400-normal.woff2','fonts/jetbrains-mono-cyrillic-700-normal.woff2','fonts/jetbrains-mono-latin-400-normal.woff2','fonts/jetbrains-mono-latin-700-normal.woff2',

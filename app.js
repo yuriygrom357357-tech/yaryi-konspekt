@@ -546,19 +546,19 @@ function buildDocxXml(d,sectPr){
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="w14 w15"><w:body>${body}${sectPr||'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="851" w:bottom="1134" w:left="1701" w:header="709" w:footer="709" w:gutter="0"/></w:sectPr>'}</w:body></w:document>`;
 }
 async function exportDocx(){
-  const d=readDoc();
+  const d=readDoc(), blob=await buildDocxBlob(d), sm=SAMPLE.doc;
+  download(blob, d.file+'.docx');
+  toast(sm&&sm.fillable?'✓ Word збережено у бланку «'+sm.name+'»: '+d.file+'.docx':'✓ Word збережено: '+d.file+'.docx',4000);
+}
+async function buildDocxBlob(d){
   const sm=SAMPLE.doc;
-  if(sm && sm.fillable){
-    const blob=await TPL.fillDocx(sm.buf,d);
-    download(blob, d.file+'.docx'); toast('✓ Word збережено у бланку «'+sm.name+'»: '+d.file+'.docx',4000); return;
-  }
+  if(sm && sm.fillable) return TPL.fillDocx(sm.buf,d);
   if(sm){
     const zip=await JSZip.loadAsync(sm.buf);
     DX.font=sm.font||'Times New Roman'; DX.sz=sm.sz||28; DX.textW=sm.textW||9355;
     zip.file('word/document.xml',buildDocxXml(d,sm.sectPr));
     DX.font='Times New Roman'; DX.sz=28; DX.textW=9355;
-    const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6},mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-    download(blob, d.file+'.docx'); toast('✓ Word збережено за зразком: '+d.file+'.docx'); return;
+    return zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6},mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
   }
   const zip=new JSZip();
   zip.file('[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>`);
@@ -567,15 +567,79 @@ async function exportDocx(){
   zip.file('word/styles.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman"/><w:sz w:val="28"/><w:szCs w:val="28"/><w:lang w:val="uk-UA"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>`);
   zip.file('docProps/core.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${X('План-конспект '+d.file)}</dc:title><dc:creator>ЯРИЙ — помічник конспектів</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString().slice(0,19)}Z</dcterms:created></cp:coreProperties>`);
   zip.file('word/document.xml',buildDocxXml(d));
-  const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6},mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-  download(blob, d.file+'.docx'); toast('✓ Word збережено: '+d.file+'.docx');
+  return zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6},mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
 }
 function download(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500); }
 
 /* ================= ACTIONS ================= */
 $('#exDocx').onclick=()=>exportDocx().catch(e=>toast('⚠ '+e.message));
 $('#exPrint').onclick=()=>{ document.title=readDoc().file; window.print(); setTimeout(()=>document.title='ЯРИЙ — помічник конспектів',1500); };
-$('#exPdf').onclick=()=>{ toast('У вікні друку оберіть «Зберегти як PDF» (Save as PDF)',4500); setTimeout(()=>$('#exPrint').onclick(),700); };
+/* ---------- PDF: справжній файл, одразу завантажується ---------- */
+async function canvasPages(el, pdf, first){
+  const cs=getComputedStyle(el), scale=2;
+  const cw=Math.max(el.scrollWidth,el.offsetWidth), ch=Math.max(el.scrollHeight,el.offsetHeight);
+  let canvas; try{ canvas=await html2canvas(el,{scale,backgroundColor:'#ffffff',useCORS:true,logging:false,foreignObjectRendering:true,width:cw,height:ch,windowWidth:cw+40,windowHeight:ch+40}); const t=canvas.getContext('2d').getImageData(Math.floor(canvas.width/2),Math.floor(canvas.height/3),1,1).data; if(!canvas.width||t[3]===0) throw 0; }catch(e){ canvas=await html2canvas(el,{scale,backgroundColor:'#ffffff',useCORS:true,logging:false,width:cw,height:ch}); }
+  const W=canvas.width, pageH=Math.round(W*297/210);
+  const mTop=Math.round((parseFloat(cs.paddingTop)||40)*scale), mBot=Math.round((parseFloat(cs.paddingBottom)||40)*scale);
+  const ctx=canvas.getContext('2d');
+  const whiteRow=y=>{ const d=ctx.getImageData(0,y,W,1).data; for(let i=0;i<d.length;i+=16){ if(d[i]<235||d[i+1]<235||d[i+2]<235) return false; } return true; };
+  let y=0, pageNo=0;
+  while(y<canvas.height-4){
+    const offset = pageNo===0 ? 0 : mTop;
+    const cap = pageH - offset - mBot;
+    let end = Math.min(canvas.height, y+cap);
+    if(end<canvas.height){ let k=end; const lim=end-Math.round(cap*0.25); while(k>lim && !whiteRow(k)) k--; if(k>lim) end=k; }
+    const h=end-y; if(h<=2) break;
+    const pc=document.createElement('canvas'); pc.width=W; pc.height=pageH; const pctx=pc.getContext('2d');
+    pctx.fillStyle='#fff'; pctx.fillRect(0,0,W,pageH); pctx.drawImage(canvas,0,y,W,h,0,offset,W,h);
+    if(!(first.v)) pdf.addPage(); first.v=false;
+    pdf.addImage(pc.toDataURL('image/jpeg',0.9),'JPEG',0,0,210,297);
+    y=end; pageNo++;
+    // skip leading blank rows on next page
+    while(y<canvas.height-4 && whiteRow(y) && pageNo>0) y++;
+  }
+}
+async function renderDocxInto(blob,host){
+  await loadScript('lib/docx-preview.min.js');
+  await window.docx.renderAsync(blob,host,null,{inWrapper:false,breakPages:true,ignoreHeight:true,ignoreWidth:false,renderHeaders:true,renderFooters:true,experimental:true,useBase64URL:true});
+  await new Promise(r=>setTimeout(r,200));
+  const names=[...new Set((host.innerHTML.match(/docx-num-\d+-\d+/g)||[]))];
+  host.style.counterReset=names.map(n=>n+' 0').join(' ');
+  const secs=[...host.querySelectorAll('section.docx')];
+  secs.forEach(sec=>{ sec.style.boxShadow='none'; sec.style.overflow='visible'; });
+  return secs;
+}
+async function exportPdf(){
+  const b=$('#exPdf'), old=b.textContent; b.disabled=true; b.textContent='▮ PDF…';
+  let host=null;
+  try{
+    await loadScript('lib/html2canvas.min.js'); await loadScript('lib/jspdf.umd.min.js');
+    if(document.fonts&&document.fonts.ready) await document.fonts.ready;
+    const d=readDoc(); const pdf=new window.jspdf.jsPDF({unit:'mm',format:'a4',compress:true}); const first={v:true};
+    const blob=await buildDocxBlob(d);
+    host=document.createElement('div'); host.style.cssText='position:fixed;left:-12000px;top:0;background:#fff;z-index:-1';
+    document.body.appendChild(host);
+    const secs=await renderDocxInto(blob,host); if(!secs.length) throw new Error('не вдалося відобразити документ');
+    for(const sec of secs){ sec.style.minHeight='0'; sec.style.margin='0'; await canvasPages(sec,pdf,first); }
+    pdf.save(d.file+'.pdf'); toast('✓ PDF збережено: '+d.file+'.pdf'+(SAMPLE.doc&&SAMPLE.doc.fillable?' (у бланку «'+SAMPLE.doc.name+'»)':''),4500);
+  }catch(e){ toast('⚠ PDF: '+e.message+' — можна скористатися «ДРУК» → «Зберегти як PDF»',7000); }
+  if(host) host.remove();
+  b.disabled=false; b.textContent=old;
+}
+/* ---------- ПЛАН-КОНСПЕКТ: перегляд готового документа (як буде у Word) ---------- */
+async function viewKonspekt(){
+  if(!$('#sheet')) return;
+  const d=readDoc(), sm=SAMPLE.doc, body=$('#docView');
+  $('#mDocT').textContent='📄 ПЛАН-КОНСПЕКТ · '+d.file;
+  $('#docViewNote').textContent= sm&&sm.fillable ? `Так виглядатиме документ у бланку «${sm.name}». Виправити текст можна на аркуші, потім відкрити знову.` : 'Так виглядатиме документ Word. Виправити текст можна на аркуші, потім відкрити знову.';
+  body.innerHTML='<p class="prev-note">Завантажую…</p>'; openModal('#mDoc');
+  try{ const blob=await buildDocxBlob(d); body.innerHTML=''; const secs=await renderDocxInto(blob,body); const avail=body.clientWidth-16; secs.forEach(sc=>{ const w=sc.offsetWidth; if(w>avail) sc.style.zoom=(avail/w).toFixed(3); }); }
+  catch(e){ body.innerHTML=`<p class="prev-note">⚠ Не вдалося показати документ: ${esc(e.message)}. Скористайтеся кнопкою WORD.</p>`; }
+}
+$('#exView').onclick=viewKonspekt;
+$('#dvDocx').onclick=()=>exportDocx().catch(e=>toast('⚠ '+e.message));
+$('#dvPdf').onclick=()=>exportPdf();
+$('#exPdf').onclick=exportPdf;
 $('#exTxt').onclick=()=>{ const d=readDoc(); download(new Blob([docText(d)],{type:'text/plain;charset=utf-8'}), d.file+'.txt'); toast('✓ TXT збережено'); };
 $('#exCopy').onclick=async()=>{ try{ await navigator.clipboard.writeText(docText(readDoc())); toast('✓ Текст скопійовано — вставляйте куди завгодно'); }catch(e){ toast('Не вдалося скопіювати'); } };
 $('#exAi').onclick=async()=>{

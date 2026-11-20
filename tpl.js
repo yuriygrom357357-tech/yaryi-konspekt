@@ -46,13 +46,22 @@ const TPL = (() => {
     ['b', 'bCs'].forEach(t => { const e = rPr.ownerDocument.createElementNS(W, 'w:' + t); if (!b) e.setAttributeNS(W, 'w:val', '0'); rPr.insertBefore(e, ref); });
   }
   // segs: [{t, b}] ; b=null keeps base bold
+  let DOM = null; // dominant font/size of the template body
+  function ensureFont(rPr) {
+    if (!DOM || !rPr) return;
+    const doc = rPr.ownerDocument;
+    const rf = kids(rPr, W, 'rFonts')[0];
+    if (rf && DOM.font && !rf.getAttributeNS(W, 'ascii') && !rf.getAttributeNS(W, 'asciiTheme')) { ['ascii', 'hAnsi'].forEach(a => rf.setAttributeNS(W, 'w:' + a, DOM.font)); }
+    if (!rf && DOM.font) { const f = doc.createElementNS(W, 'w:rFonts'); ['ascii', 'hAnsi', 'cs'].forEach(a => f.setAttributeNS(W, 'w:' + a, DOM.font)); const ref = [...rPr.childNodes].find(n => n.nodeType === 1 && n.localName !== 'rStyle') || null; rPr.insertBefore(f, ref); }
+    if (!kids(rPr, W, 'sz').length && DOM.sz) { ['sz', 'szCs'].forEach(t => { const e = doc.createElementNS(W, 'w:' + t); e.setAttributeNS(W, 'w:val', DOM.sz); const ref = [...rPr.childNodes].find(n => n.nodeType === 1 && ['highlight', 'u', 'effect', 'vertAlign', 'lang', 'eastAsianLayout', 'specVanish', 'oMath'].includes(n.localName)) || null; rPr.insertBefore(e, ref); }); }
+  }
   function wSet(p, segs) {
     const doc = p.ownerDocument, rp = baseRPr(p);
     [...p.childNodes].forEach(n => { if (!(n.nodeType === 1 && n.localName === 'pPr')) p.removeChild(n); });
     segs.forEach(sg => String(sg.t).split('\n').forEach((line, i) => {
       const r = doc.createElementNS(W, 'w:r');
       const rr = rp ? rp.cloneNode(true) : doc.createElementNS(W, 'w:rPr');
-      setB(rr, sg.b); r.appendChild(rr);
+      ensureFont(rr); setB(rr, sg.b); r.appendChild(rr);
       if (i) r.appendChild(doc.createElementNS(W, 'w:br'));
       const t = doc.createElementNS(W, 'w:t'); t.setAttributeNS(XMLNS, 'xml:space', 'preserve'); t.textContent = line; r.appendChild(t);
       p.appendChild(r);
@@ -64,7 +73,10 @@ const TPL = (() => {
 
   async function fillDocx(buf, d, opt = {}) {
     const zip = await JSZip.loadAsync(buf);
-    const doc = parse(await zip.file('word/document.xml').async('string'));
+    const docXml = await zip.file('word/document.xml').async('string');
+    const doc = parse(docXml);
+    const mc = re => { const m = {}; let b = null, bc = 0; for (const x of docXml.matchAll(re)) { m[x[1]] = (m[x[1]] || 0) + 1; if (m[x[1]] > bc) { bc = m[x[1]]; b = x[1]; } } return b; };
+    DOM = { font: mc(/<w:rFonts[^>]*w:ascii="([^"]+)"/g), sz: mc(/<w:sz w:val="(\d+)"/g) };
     const body = all(doc, W, 'body')[0];
     const paras = all(body, W, 'p').filter(p => !inTable(p));
     const lab = (p, label, value) => wSet(p, [{ t: label + ' ', b: true }, { t: value || '', b: false }]);
