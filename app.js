@@ -470,7 +470,7 @@ function qRow(x,i){
 function renumber(){ $$('#qtable tbody tr').forEach((tr,i)=>tr.querySelector('.qn').textContent=`Навчальне питання №${i+1}.`); }
 function afterRender(loaded){
   const sheet=$('#sheet');
-  $('#empty')?.remove(); $('#docbar').hidden=false; $('#exAi').hidden=S.mode!=='ai';
+  $('#empty')?.remove(); $('#docbar').hidden=false; $('#exAi').hidden=S.mode!=='ai'; updateDest();
   $$('#sheet .cbox').forEach(d=>{ d.style.whiteSpace='pre-wrap'; });
   sheet.addEventListener('click',e=>{
     const b=e.target.closest('[data-act]'); if(b){ const tr=b.closest('tr');
@@ -683,9 +683,9 @@ async function analyzePptSample(buf,name){
   return { kind:'ppt', name, buf, layouts, slides:texts.length, fillable:TPL.isPresTemplate(texts) };
 }
 const BUILTIN={
-  k158v1:{kind:'doc',file:'templates/konspekt-158-v1.docx',name:'Бланк 158 НЦ — варіант 1'},
-  k158v2:{kind:'doc',file:'templates/konspekt-158-v2.docx',name:'Бланк 158 НЦ — варіант 2'},
-  p158:{kind:'ppt',file:'templates/prezentatsiya-158.pptx',name:'Презентація 158 НЦ'}
+  k158v1:{kind:'doc',file:'templates/konspekt-158-v1.docx',name:'Бланк 158 НЦ — варіант 1',prev:'templates/preview/konspekt-158-v1.jpg'},
+  k158v2:{kind:'doc',file:'templates/konspekt-158-v2.docx',name:'Бланк 158 НЦ — варіант 2',prev:'templates/preview/konspekt-158-v2.jpg'},
+  p158:{kind:'ppt',file:'templates/prezentatsiya-158.pptx',name:'Презентація 158 НЦ',prev:'templates/preview/prezentatsiya-158.jpg'}
 };
 const TPL_DEFAULT={doc:'k158v1',ppt:'p158'};
 function loadBin(url){ return new Promise((res,rej)=>{ const x=new XMLHttpRequest(); x.open('GET',url); x.responseType='arraybuffer'; x.onload=()=>(x.status===200||x.status===0)&&x.response?res(x.response):rej(new Error('не знайдено '+url)); x.onerror=()=>rej(new Error('не вдалося відкрити '+url)); x.send(); }); }
@@ -694,6 +694,7 @@ function renderSlots(){
   $('#selTplDoc').value=LS.get('tpl_doc',TPL_DEFAULT.doc); $('#selTplPpt').value=LS.get('tpl_ppt',TPL_DEFAULT.ppt);
   $('#slotDoc').classList.toggle('on',!!d); $('#slotPpt').classList.toggle('on',!!p);
   $('#stDoc').textContent = d ? (d.fillable?`✓ ${d.name} · заповнення бланку без зміни вигляду`:`✓ ${d.name} · ${d.font}, ${d.sz/2} пт (оформлення за зразком)`) : 'власний шаблон «Ярого» (Times New Roman 14)';
+  updateDest();
   $('#stPpt').textContent = p ? (p.fillable?`✓ ${p.name} · ${p.slides} слайдів, заповнюються без зміни вигляду`:`✓ ${p.name} · оформлення з макетів зразка`) : 'темний військовий дизайн «Ярого»';
 }
 async function applyTpl(kind,val,silent){
@@ -732,6 +733,20 @@ async function restoreSamples(){
   }
   renderSlots();
 }
+
+function updateDest(){
+  const el=$('#destLine'); if(!el) return; const d=SAMPLE.doc, p=SAMPLE.ppt;
+  el.textContent=`WORD → ${d?(d.fillable?'у бланк «'+d.name+'»':'за зразком «'+d.name+'»'):'стандартний шаблон «Ярого»'}  ·  ПРЕЗЕНТАЦІЯ → ${p?(p.fillable?'у шаблон «'+p.name+'»':'за зразком «'+p.name+'»'):'військовий дизайн «Ярого»'}`;
+}
+$$('[data-prev]').forEach(b=>b.onclick=()=>{
+  const k=b.dataset.prev, v=LS.get('tpl_'+k,TPL_DEFAULT[k]), s=SAMPLE[k], bi=BUILTIN[v];
+  $('#mPrevT').textContent= k==='doc'?'👁 ЗРАЗОК КОНСПЕКТУ':'👁 ЗРАЗОК ПРЕЗЕНТАЦІЇ';
+  let html='';
+  if(bi) html=`<p class="prev-note"><b>${esc(bi.name)}</b> — порожній бланк. «Ярий» вписує в нього дані${k==='doc'?' (тема, заняття, мета, час, місце, метод, навчальні питання, таблиця «Навчальні питання / Короткий зміст», хвилини, підписи)':' (тема, заняття, мета, хід заняття, оцінювання, «№1, №2, №3» з тезами, запитання з відповідями, підсумки, кінцеві інструкції)'}, не змінюючи оформлення.</p><img class="prev-img" src="${bi.prev}" alt="${esc(bi.name)}">`;
+  else if(s) html=`<p class="prev-note"><b>${esc(s.name)}</b> — ваш файл. ${s.fillable?'Розпізнано як бланк: дані вписуються у нього без зміни вигляду.':'Оформлення (шрифт, поля, стилі) береться з нього.'}</p>`;
+  else html=`<p class="prev-note">Зразок не вибрано — ${k==='doc'?'документ буде у стандартному шаблоні «Ярого» (Times New Roman 14)':'слайди будуть у військовому дизайні «Ярого»'}.</p>`;
+  $('#prevBody').innerHTML=html; openModal('#mPrev');
+});
 
 /* ================= EXTRAS (для слайдів шаблону) ================= */
 function nextLessonText(){

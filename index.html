@@ -249,6 +249,13 @@ header.top{position:relative}
 
 
 
+
+.prev-btn{margin-top:6px}
+.dest{flex-basis:100%;font-family:var(--mono);font-size:11px;color:var(--tan);letter-spacing:.04em;line-height:1.5;padding-top:2px}
+.mbox.wide{max-width:1100px}
+.prev-img{width:100%;height:auto;border-radius:8px;border:1px solid #000;display:block;margin:8px 0}
+.prev-note{font-size:13.5px;color:#cfcabd}
+
 @media(max-width:640px){.sheet{padding:28px 18px;font-size:12pt}.paper-wrap{padding:8px}}
 .sheet [contenteditable]{outline:none;border-radius:2px}
 .sheet [contenteditable]:hover{background:#fff8dc}
@@ -450,7 +457,8 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
                 <option value="none">Стандарт «Ярого»</option>
                 <option value="own">⤒ Свій файл Word…</option>
               </select>
-              <span class="slot-st" id="stDoc"></span></div>
+              <span class="slot-st" id="stDoc"></span>
+              <button class="btn ghost sm prev-btn" data-prev="doc">👁 Переглянути бланк</button></div>
             <input type="file" id="fDoc" accept=".docx" hidden>
           </div>
           <div class="slot" id="slotPpt" data-kind="ppt">
@@ -461,7 +469,8 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
                 <option value="none">Військовий дизайн «Ярого»</option>
                 <option value="own">⤒ Свій файл PowerPoint…</option>
               </select>
-              <span class="slot-st" id="stPpt"></span></div>
+              <span class="slot-st" id="stPpt"></span>
+              <button class="btn ghost sm prev-btn" data-prev="ppt">👁 Переглянути шаблон</button></div>
             <input type="file" id="fPpt" accept=".pptx" hidden>
           </div>
         </div>
@@ -504,6 +513,7 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
         <button class="round-btn steel" id="exCopy">⧉ КОПІЮВАТИ</button>
         <button class="btn ghost sm" id="exAi" hidden title="Перегенерувати короткий зміст через Gemini">✨ Покращити зміст</button>
         <span class="saved-tag" id="savedTag"></span>
+        <div class="dest" id="destLine"></div>
       </div>
       <div id="docArea">
         <div class="empty" id="empty">
@@ -542,7 +552,7 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
       <b>158-й навчальний центр</b><br>
       <span class="small">Розробник — Юрій Мельничук (позивний «Композитор»)</span>
     </div>
-    <div class="stamp">ЯРИЙ · v1.6 · 2026</div>
+    <div class="stamp">ЯРИЙ · v1.7 · 2026</div>
   </div>
 </footer>
 
@@ -637,6 +647,14 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
   </div>
 </div>
 
+<!-- TEMPLATE PREVIEW -->
+<div class="modal" id="mPrev" role="dialog" aria-modal="true" aria-labelledby="mPrevT">
+  <div class="mbox wide">
+    <div class="mhead"><h3 id="mPrevT">👁 ЗРАЗОК</h3><button class="close" data-close aria-label="Закрити">×</button></div>
+    <div class="mbody" id="prevBody"></div>
+  </div>
+</div>
+
 <!-- HISTORY -->
 <div class="modal" id="mHist" role="dialog" aria-modal="true" aria-labelledby="mHistT">
   <div class="mbox">
@@ -648,8 +666,8 @@ footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-con
 <div class="toast" id="toast"></div>
 
 <script src="lib/jszip.min.js"></script>
-<script src="data/program.js?v=1.6"></script>
-<script src="tpl.js?v=1.6"></script>
-<script src="app.js?v=1.6"></script>
+<script src="data/program.js?v=1.7"></script>
+<script src="tpl.js?v=1.7"></script>
+<script src="app.js?v=1.7"></script>
 </body>
 </html>
