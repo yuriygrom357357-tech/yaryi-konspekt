@@ -120,7 +120,7 @@ const TPL = (() => {
       });
     }
     zip.file('word/document.xml', ser(doc));
-    return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 }, mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
   }
   function fillNumbered(slots, items) {
     if (!slots.length) return;
@@ -333,7 +333,7 @@ const TPL = (() => {
     pres = pres.replace(/<p:sldIdLst>[\s\S]*?<\/p:sldIdLst>/, `<p:sldIdLst>${ids}</p:sldIdLst>`).replace(/<p14:sectionLst[\s\S]*?<\/p14:sectionLst>/, '');
     zip.file('ppt/presentation.xml', pres); zip.file('ppt/_rels/presentation.xml.rels', rels); zip.file('[Content_Types].xml', ct);
     if (zip.file('docProps/app.xml')) { zip.remove('docProps/app.xml'); ct = ct.replace(/<Override[^>]*PartName="\/docProps\/app\.xml"[^>]*\/>/, ''); zip.file('[Content_Types].xml', ct); const rr = await zip.file('_rels/.rels').async('string'); zip.file('_rels/.rels', rr.replace(/<Relationship[^>]*Target="docProps\/app\.xml"[^>]*\/>/, '')); }
-    return { blob: await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }), slides: list.length };
+    return { blob: await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 }, mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }), slides: list.length };
   }
   function fillTopic(SP, d, summary) {
     const [thN, thName] = splitNum(d.theme), [lsN, lsName] = splitNum(d.lesson);

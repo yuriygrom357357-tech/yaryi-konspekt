@@ -557,7 +557,7 @@ async function exportDocx(){
     DX.font=sm.font||'Times New Roman'; DX.sz=sm.sz||28; DX.textW=sm.textW||9355;
     zip.file('word/document.xml',buildDocxXml(d,sm.sectPr));
     DX.font='Times New Roman'; DX.sz=28; DX.textW=9355;
-    const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6},mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
     download(blob, d.file+'.docx'); toast('✓ Word збережено за зразком: '+d.file+'.docx'); return;
   }
   const zip=new JSZip();
@@ -567,7 +567,7 @@ async function exportDocx(){
   zip.file('word/styles.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman"/><w:sz w:val="28"/><w:szCs w:val="28"/><w:lang w:val="uk-UA"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>`);
   zip.file('docProps/core.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${X('План-конспект '+d.file)}</dc:title><dc:creator>ЯРИЙ — помічник конспектів</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString().slice(0,19)}Z</dcterms:created></cp:coreProperties>`);
   zip.file('word/document.xml',buildDocxXml(d));
-  const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6},mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
   download(blob, d.file+'.docx'); toast('✓ Word збережено: '+d.file+'.docx');
 }
 function download(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500); }
@@ -885,7 +885,7 @@ async function pptxFromSample(sm,slides,fileName){
   });
   pres=pres.replace(/<p:sldSz\b/,`<p:sldIdLst>${ids}</p:sldIdLst><p:sldSz`);
   zip.file('ppt/presentation.xml',pres); zip.file(relsPath,rels); zip.file('[Content_Types].xml',ct);
-  const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
+  const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6},mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
   download(blob,fileName+'.pptx');
 }
 async function exportPptx(){
