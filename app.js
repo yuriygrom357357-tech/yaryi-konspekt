@@ -149,7 +149,8 @@ function xml(str){ return new DOMParser().parseFromString(str,'application/xml')
 const byTag=(el,t)=>[...el.getElementsByTagNameNS('*',t)];
 async function parsePptx(file){
   const zip=await JSZip.loadAsync(file);
-  const names=Object.keys(zip.files).filter(n=>/^ppt\/slides\/slide\d+\.xml$/.test(n)).sort((a,b)=>+a.match(/\d+/)[0]-+b.match(/\d+/)[0]);
+  let names; try{ names=(await TPL.slideList(zip)).map(s=>s.path).filter(n=>zip.file(n)); }catch(e){ names=null; }
+  if(!names||!names.length) names=Object.keys(zip.files).filter(n=>/^ppt\/slides\/slide\d+\.xml$/.test(n)).sort((a,b)=>+a.match(/\d+/)[0]-+b.match(/\d+/)[0]);
   const slides=[];
   for(const n of names){
     const doc=xml(await zip.file(n).async('string'));
@@ -174,8 +175,10 @@ async function parsePptx(file){
           byTag(sp,'p').forEach(p=>{ const t=clean(byTag(p,'t').map(x=>x.textContent).join('')); if(t) lines.push('Примітка: '+t); }); }
       }
     }
-    if(!title && lines.length) title=lines.shift();
-    if(title||lines.length) slides.push({title,lines});
+    const keep=lines.filter(l=>!/^Відкрита інформація$/i.test(l));
+    if(!title && keep.length) title=keep.shift();
+    if(/^(ПРАВИЛА ПОВОДЖЕННЯ|ПОРЯДОК ПРОВЕДЕННЯ|КІНЕЦЬ ЗАНЯТТЯ|158 НАВЧАЛЬНИЙ ЦЕНТР)/i.test(title||'')) continue;
+    if(title||keep.length) slides.push({title,lines:keep});
   }
   return slides;
 }
@@ -214,16 +217,20 @@ async function handleFiles(list){
     try{
       toast('Заряджаю: '+f.name+'…');
       const slides = ext==='pptx'?await parsePptx(f): ext==='docx'?await parseDocx(f): ext==='pdf'?await parsePdf(f): await parseTxt(f);
-      if(!slides.length) throw new Error('у файлі не знайдено тексту');
-      S.files.push({name:f.name,kind:ext,slides});
+      let ready=null;
+      try{ if(ext==='docx') ready=await TPL.parseKonspekt(f); else if(ext==='pptx') ready=await TPL.parsePresentation(f); }catch(e){ ready=null; }
+      if(!slides.length && !ready) throw new Error('у файлі не знайдено тексту');
+      S.files.push({name:f.name,kind:ext,slides,ready});
+      if(ready) toast(ext==='docx'?'✓ Розпізнано готовий конспект — можна одразу зробити з нього презентацію':'✓ Розпізнано заповнену презентацію — можна скласти з неї конспект',5000);
       toast(`✓ ${f.name}: ${slides.length} ${ext==='pptx'||ext==='pdf'?'слайдів/сторінок':'блоків'}`);
     }catch(e){ toast('⚠ '+f.name+': '+e.message,5000); }
   }
   renderFiles(); updateMag();
 }
 function renderFiles(){
-  $('#files').innerHTML=S.files.map((f,i)=>`<div class="file"><span>▮</span><span>${esc(f.name)} · <span style="color:var(--dim)">${f.slides.length} фрагм.</span></span><button class="x" data-i="${i}" aria-label="Прибрати">×</button></div>`).join('');
+  $('#files').innerHTML=S.files.map((f,i)=>`<div class="file"><span>▮</span><span>${esc(f.name)} · <span style="color:var(--dim)">${f.slides.length} фрагм.</span></span><button class="x" data-i="${i}" aria-label="Прибрати">×</button></div>${f.ready?`<button class="btn olive sm ready-btn" data-open="${i}">▶ ${f.kind==='docx'?'Відкрити як готовий конспект':'Скласти конспект з цієї презентації'}</button>`:''}`).join('');
   $$('#files .x').forEach(b=>b.onclick=()=>{ S.files.splice(+b.dataset.i,1); renderFiles(); updateMag(); });
+  $$('#files [data-open]').forEach(b=>b.onclick=()=>{ const f=S.files[+b.dataset.open]; openParsed(f.ready, f.kind==='docx'?'Конспект відкрито з файлу «'+f.name+'»':'Конспект складено з презентації «'+f.name+'»'); });
 }
 function allSegments(){
   const segs=[]; S.files.forEach(f=>f.slides.forEach(s=>segs.push(s)));
@@ -338,11 +345,19 @@ const SYS = `Ти — досвідчений методист навчально
 - «Керівництва та посібники» — тільки програма підготовки та документи, прямо названі в матеріалах.
 - Мета: навчальна і виховна, 2–3 речення.
 - Матеріальне забезпечення: конкретний перелік під заняття і місце проведення.
-- Заключна частина: підбиття підсумків, перевірка засвоєння, завдання на самопідготовку, заходи безпеки, впорядкування місця заняття.`;
+- Заключна частина: підбиття підсумків, перевірка засвоєння, завдання на самопідготовку, заходи безпеки, впорядкування місця заняття.
+- Для кожного навчального питання: check_q — одне контрольне запитання курсантам, check_a — коротка правильна відповідь (з тексту «Короткого змісту»).
+- evalCond — умови оцінювання (як і коли), evalCrit — критерії оцінок (відмінно/добре/задовільно/незадовільно), selfTask — завдання на самостійну підготовку, finalQ/finalA — підсумкове запитання по заняттю і відповідь.`;
 const SCHEMA = {type:'OBJECT',properties:{
   goal:{type:'STRING'}, materials:{type:'STRING'}, literature:{type:'STRING'},
-  questions:{type:'ARRAY',items:{type:'OBJECT',properties:{q:{type:'STRING'},c:{type:'STRING'}},required:['q','c']}},
-  final:{type:'STRING'}}, required:['goal','materials','literature','questions','final']};
+  questions:{type:'ARRAY',items:{type:'OBJECT',properties:{q:{type:'STRING'},c:{type:'STRING'},check_q:{type:'STRING'},check_a:{type:'STRING'}},required:['q','c','check_q','check_a']}},
+  final:{type:'STRING'}, evalCond:{type:'STRING'}, evalCrit:{type:'STRING'}, selfTask:{type:'STRING'}, finalQ:{type:'STRING'}, finalA:{type:'STRING'}},
+  required:['goal','materials','literature','questions','final','evalCond','evalCrit','selfTask','finalQ','finalA']};
+const EXTRA_SCHEMA={type:'OBJECT',properties:{checks:{type:'ARRAY',items:{type:'OBJECT',properties:{q:{type:'STRING'},a:{type:'STRING'}},required:['q','a']}},evalCond:{type:'STRING'},evalCrit:{type:'STRING'},selfTask:{type:'STRING'},finalQ:{type:'STRING'},finalA:{type:'STRING'}},required:['checks','evalCond','evalCrit','selfTask','finalQ','finalA']};
+async function aiExtras(d){
+  const r=await gemini(`За цим планом-конспектом підготуй дані для слайдів: для кожного навчального питання — одне контрольне запитання і коротку правильну відповідь (з тексту конспекту), умови оцінювання (як і коли), критерії оцінювання (відмінно/добре/задовільно/незадовільно), завдання на самостійну підготовку, підсумкове запитання по всьому заняттю з відповіддю. Стисло, без markdown.\n\nКОНСПЕКТ:\n${docText(d).slice(0,30000)}\n\nВідповідь — тільки JSON.`, EXTRA_SCHEMA);
+  const out={...r}; out.checks=(r.checks||[]).map(c=>({q:c.q,a:c.a})); return out;
+}
 async function gemini(prompt, schema){
   const avail=LS.get('models',[]);
   const pref=['gemini-flash-latest','gemini-2.5-flash','gemini-flash-lite-latest','gemini-2.5-flash-lite'];
@@ -393,7 +408,8 @@ async function buildAI(){
   return { L, tm, ai:true,
     goal:r.goal||base.goal, materials:r.materials||base.materials, literature:r.literature||base.literature,
     questions:(r.questions||[]).filter(x=>x&&x.q).map(x=>({q:x.q,c:x.c||''})).length ? r.questions.map(x=>({q:x.q,c:x.c||''})) : base.questions,
-    final:r.final||base.final };
+    final:r.final||base.final,
+    extra:{ checks:(r.questions||[]).map(x=>({q:x.check_q||'',a:x.check_a||''})), evalCond:r.evalCond, evalCrit:r.evalCrit, selfTask:r.selfTask, finalQ:r.finalQ, finalA:r.finalA } };
 }
 
 /* ================= RENDER SHEET ================= */
@@ -430,7 +446,7 @@ function renderSheet(D){
 <p><span class="lbl">ТЕМА №</span> ${ce('theme', L.theme||PH('номер і назва теми'))}</p>
 <p><span class="lbl">ЗАНЯТТЯ №</span> ${ce('lesson', L.lesson||PH('номер і назва заняття'))}</p>
 <p><span class="lbl">МЕТА:</span> ${ce('goal', D.goal)}</p>
-<p><span class="lbl">ЧАС:</span> ${ce('time', tm.total+' хв ('+L.h+' '+(L.h===1?'академічна година':'академічні години')+')')}</p>
+<p><span class="lbl">ЧАС:</span> ${ce('time', D.timeText || (tm.total+' хв ('+L.h+' '+(L.h===1?'академічна година':'академічні години')+')'))}</p>
 <p><span class="lbl">МІСЦЕ:</span> ${ce('place', (L.place&&L.place!=='—')?L.place:PH('навчальний клас / ділянка місцевості'))}</p>
 <p><span class="lbl">МЕТОД:</span> ${ce('method', L.method||PH('лекція / показ / тренування / дискусія'))}</p>
 <p><span class="lbl">МАТЕРІАЛЬНЕ ЗАБЕЗПЕЧЕННЯ:</span> ${ce('materials', D.materials)}</p>
@@ -443,7 +459,8 @@ ${introList().map((x,i)=>`<p><b>${i+1}. ${ce('introT'+i, x[0])}</b> ${ce('intro'
 <button class="addrow" id="addRow">+ додати навчальне питання</button>
 <h5>ІІІ. ЗАКЛЮЧНА ЧАСТИНА – ${ce('finMin', String(tm.fin))} хв.</h5>
 <p>${ce('final', D.final)}</p>
-<p style="margin-top:22px"><span class="lbl">КЕРІВНИК ЗАНЯТТЯ:</span> ${ce('leader', REQ.leader||PH('військове звання, підпис, ініціали та прізвище'))}</p>`;
+<p style="margin-top:22px"><span class="lbl">КЕРІВНИК ЗАНЯТТЯ:</span> ${ce('leader', REQ.leader||PH('військове звання, підпис, ініціали та прізвище'))}</p>
+<div hidden id="xtra" data-json="${esc(JSON.stringify(D.extra||null))}"></div>`;
   $('#docArea').innerHTML=`<div class="paper-wrap"><div class="sheet" id="sheet" data-file="${esc(fileName(L))}" data-ai="${D.ai?1:0}" data-intro="${introList().length}">${html}</div></div>`;
   afterRender();
 }
@@ -531,6 +548,10 @@ function buildDocxXml(d,sectPr){
 async function exportDocx(){
   const d=readDoc();
   const sm=SAMPLE.doc;
+  if(sm && sm.fillable){
+    const blob=await TPL.fillDocx(sm.buf,d);
+    download(blob, d.file+'.docx'); toast('✓ Word збережено у бланку «'+sm.name+'»: '+d.file+'.docx',4000); return;
+  }
   if(sm){
     const zip=await JSZip.loadAsync(sm.buf);
     DX.font=sm.font||'Times New Roman'; DX.sz=sm.sz||28; DX.textW=sm.textW||9355;
@@ -566,6 +587,7 @@ $('#exAi').onclick=async()=>{
     const r=await gemini(lessonPrompt(L,timing(L.h),true,d.questions.map(x=>x.q)), SCHEMA);
     const trs=$$('#qtable tbody tr');
     (r.questions||[]).forEach((x,i)=>{ if(trs[i]&&x.c){ const c=trs[i].querySelector('[data-k="c"]'); c.innerHTML=markPh(x.c); } });
+    if(r.questions){ const x=sheetExtras()||{}; x.checks=r.questions.map(q=>({q:q.check_q||'',a:q.check_a||''})); ['evalCond','evalCrit','selfTask','finalQ','finalA'].forEach(k=>{ if(r[k]) x[k]=r[k]; }); const xe=$('#xtra'); if(xe) xe.dataset.json=JSON.stringify(x); }
     $('#sheet').dataset.ai='1'; saveCurrent(); toast('✓ Короткий зміст покращено');
   }catch(e){ toast('⚠ Gemini: '+e.message,6000); }
   b.disabled=false; b.textContent='✨ Покращити зміст';
@@ -636,48 +658,65 @@ async function analyzeDocSample(buf,name){
   // text width from sectPr
   const pw=+((sectPr.match(/<w:pgSz[^>]*w:w="(\d+)"/)||[])[1]||11906), pl=+((sectPr.match(/<w:pgMar[^>]*w:left="(\d+)"/)||[])[1]||1701), pr=+((sectPr.match(/<w:pgMar[^>]*w:right="(\d+)"/)||[])[1]||851);
   const doc=xml(xmlStr);
-  const paras=byTag(doc,'p').map(p=>clean(byTag(p,'t').map(t=>t.textContent).join(''))).filter(Boolean);
+  const paras=byTag(doc,'p').map(p=>TPL.wText(p).replace(/[ \t\u00a0]+/g,' ').replace(/ *\n */g,'\n').trim()).filter(Boolean);
   const idx=re=>paras.findIndex(p=>re.test(p));
   const iIn=idx(/ВСТУПНА\s+ЧАСТИНА/i), iMain=idx(/ОСНОВНА\s+ЧАСТИНА/i), iFin=idx(/ЗАКЛЮЧНА\s+ЧАСТИНА/i), iLead=paras.findIndex((p,i)=>i>iFin && /КЕРІВНИК\s+ЗАНЯТТЯ/i.test(p));
   let intro=null;
   if(iIn>=0 && iMain>iIn){
     const items=[]; paras.slice(iIn+1,iMain).forEach(p=>{
-      const m=p.match(/^\s*(\d+)[.)]\s*(.+)$/);
-      if(m){ const body=m[2]; const cut=body.search(/[.:]\s/); items.push(cut>3&&cut<90?[body.slice(0,cut+1).trim(),body.slice(cut+1).trim()]:[body,'']); }
-      else if(items.length) items[items.length-1][1]=(items[items.length-1][1]+' '+p).trim();
+      const body=p.replace(/^\s*\d+[.)]\s*/,'');
+      if(body.includes('\n')){ const [t,...r]=body.split('\n'); items.push([t.trim().replace(/[.:]?$/,'.'),r.join(' ').trim()]); return; }
+      const cut=body.search(/[.:*]\s/);
+      items.push(cut>3&&cut<90?[body.slice(0,cut+1).trim(),body.slice(cut+1).trim()]:[body,'']);
     });
     if(items.length>=3) intro=items;
   }
   let final=null;
-  if(iFin>=0){ const fin=paras.slice(iFin+1, iLead>iFin?iLead:iFin+8).join(' '); if(fin.length>40) final=fin; }
-  return { kind:'doc', name, buf, font:font||'Times New Roman', sz:sz||28, sectPr, textW:Math.max(5000,pw-pl-pr), intro, final, text:paras.join('\n') };
+  if(iFin>=0){ const fin=paras.slice(iFin+1, iLead>iFin?iLead:iFin+8).map(p=>p.replace(/\n/,'. ').replace(/\.\. /,'. ').replace(/\n/g,' ')).join(' '); if(fin.length>40) final=fin; }
+  return { kind:'doc', name, buf, font:font||'Times New Roman', sz:sz||28, sectPr, textW:Math.max(5000,pw-pl-pr), intro, final, text:paras.join('\n'), fillable:TPL.isKonspektTemplate(xmlStr) };
 }
 async function analyzePptSample(buf,name){
   const zip=await JSZip.loadAsync(buf);
   if(!zip.file('ppt/presentation.xml')) throw new Error('це не схоже на презентацію PowerPoint');
   const layouts=Object.keys(zip.files).filter(n=>/^ppt\/slideLayouts\/slideLayout\d+\.xml$/.test(n)).length;
-  return { kind:'ppt', name, buf, layouts };
+  const texts=await TPL.presTexts(buf);
+  return { kind:'ppt', name, buf, layouts, slides:texts.length, fillable:TPL.isPresTemplate(texts) };
 }
+const BUILTIN={
+  k158v1:{kind:'doc',file:'templates/konspekt-158-v1.docx',name:'Бланк 158 НЦ — варіант 1'},
+  k158v2:{kind:'doc',file:'templates/konspekt-158-v2.docx',name:'Бланк 158 НЦ — варіант 2'},
+  p158:{kind:'ppt',file:'templates/prezentatsiya-158.pptx',name:'Презентація 158 НЦ'}
+};
+const TPL_DEFAULT={doc:'k158v1',ppt:'p158'};
+function loadBin(url){ return new Promise((res,rej)=>{ const x=new XMLHttpRequest(); x.open('GET',url); x.responseType='arraybuffer'; x.onload=()=>(x.status===200||x.status===0)&&x.response?res(x.response):rej(new Error('не знайдено '+url)); x.onerror=()=>rej(new Error('не вдалося відкрити '+url)); x.send(); }); }
 function renderSlots(){
   const d=SAMPLE.doc, p=SAMPLE.ppt;
+  $('#selTplDoc').value=LS.get('tpl_doc',TPL_DEFAULT.doc); $('#selTplPpt').value=LS.get('tpl_ppt',TPL_DEFAULT.ppt);
   $('#slotDoc').classList.toggle('on',!!d); $('#slotPpt').classList.toggle('on',!!p);
-  $('#stDoc').textContent = d ? `✓ ${d.name} · ${d.font}, ${d.sz/2} пт${d.intro?' · вступ зі зразка':''}${d.final?' · заключна зі зразка':''}` : 'не завантажено';
-  $('#stPpt').textContent = p ? `✓ ${p.name} · макетів: ${p.layouts}` : 'не завантажено — стандартний військовий дизайн';
-  $$('[data-rm]').forEach(b=>b.hidden=!SAMPLE[b.dataset.rm]);
-  $$('[data-pick]').forEach(b=>b.textContent=SAMPLE[b.dataset.pick]?'Замінити':'Завантажити');
+  $('#stDoc').textContent = d ? (d.fillable?`✓ ${d.name} · заповнення бланку без зміни вигляду`:`✓ ${d.name} · ${d.font}, ${d.sz/2} пт (оформлення за зразком)`) : 'власний шаблон «Ярого» (Times New Roman 14)';
+  $('#stPpt').textContent = p ? (p.fillable?`✓ ${p.name} · ${p.slides} слайдів, заповнюються без зміни вигляду`:`✓ ${p.name} · оформлення з макетів зразка`) : 'темний військовий дизайн «Ярого»';
+}
+async function applyTpl(kind,val,silent){
+  const prev=LS.get('tpl_'+kind,TPL_DEFAULT[kind]);
+  if(val==='own'){ (kind==='doc'?$('#fDoc'):$('#fPpt')).click(); renderSlots(); return; }
+  try{
+    if(val==='none') SAMPLE[kind]=null;
+    else { const b=BUILTIN[val]; const buf=await loadBin(b.file); SAMPLE[kind]= kind==='doc'? await analyzeDocSample(buf,b.name) : await analyzePptSample(buf,b.name); }
+    LS.set('tpl_'+kind,val); renderSlots();
+    if(!silent) toast(val==='none'?'Зразок вимкнено — стандартне оформлення «Ярого»':'✓ '+BUILTIN[val].name);
+  }catch(e){ LS.set('tpl_'+kind,prev); renderSlots(); if(!silent) toast('⚠ '+e.message+(isFileMode?' — у офлайн-папці відкривайте через значок «ЯРИЙ»':''),6000); }
 }
 async function loadSample(kind,file){
   try{
     const buf=await file.arrayBuffer();
     const s = kind==='doc' ? await analyzeDocSample(buf,file.name) : await analyzePptSample(buf,file.name);
-    SAMPLE[kind]=s; await IDB.set('sample_'+kind,{name:file.name,buf});
-    renderSlots(); toast(kind==='doc'?'✓ Зразок конспекту заряджено — нові конспекти будуть за ним':'✓ Зразок презентації заряджено');
-  }catch(e){ toast('⚠ Зразок не прийнято: '+e.message,5000); }
+    SAMPLE[kind]=s; await IDB.set('sample_'+kind,{name:file.name,buf}); LS.set('tpl_'+kind,'own');
+    renderSlots(); toast(s.fillable?'✓ Бланк розпізнано — бот заповнюватиме його, не змінюючи вигляду':'✓ Зразок заряджено — оформлення братиметься з нього',4500);
+  }catch(e){ toast('⚠ Зразок не прийнято: '+e.message,5000); renderSlots(); }
 }
-[['doc','#fDoc','#slotDoc'],['ppt','#fPpt','#slotPpt']].forEach(([k,inp,slot])=>{
+[['doc','#fDoc','#slotDoc','#selTplDoc'],['ppt','#fPpt','#slotPpt','#selTplPpt']].forEach(([k,inp,slot,sel])=>{
   const el=$(slot), fi=$(inp);
-  el.querySelector('[data-pick]').onclick=()=>fi.click();
-  el.querySelector('[data-rm]').onclick=async()=>{ SAMPLE[k]=null; await IDB.del('sample_'+k); renderSlots(); toast('Зразок прибрано'); };
+  $(sel).onchange=()=>applyTpl(k,$(sel).value);
   fi.onchange=()=>{ if(fi.files[0]) loadSample(k,fi.files[0]); fi.value=''; };
   ['dragenter','dragover'].forEach(ev=>el.addEventListener(ev,e=>{ e.preventDefault(); el.classList.add('over'); }));
   ['dragleave','drop'].forEach(ev=>el.addEventListener(ev,e=>{ e.preventDefault(); el.classList.remove('over'); }));
@@ -685,9 +724,55 @@ async function loadSample(kind,file){
 });
 async function restoreSamples(){
   for(const k of ['doc','ppt']){
-    try{ const v=await IDB.get('sample_'+k); if(v&&v.buf) SAMPLE[k]= k==='doc'? await analyzeDocSample(v.buf,v.name) : await analyzePptSample(v.buf,v.name); }catch(e){}
+    const v=LS.get('tpl_'+k,TPL_DEFAULT[k]);
+    try{
+      if(v==='own'){ const o=await IDB.get('sample_'+k); if(o&&o.buf) SAMPLE[k]= k==='doc'? await analyzeDocSample(o.buf,o.name) : await analyzePptSample(o.buf,o.name); else LS.set('tpl_'+k,TPL_DEFAULT[k]); }
+      if(LS.get('tpl_'+k,TPL_DEFAULT[k])!=='own') await applyTpl(k,LS.get('tpl_'+k,TPL_DEFAULT[k]),true);
+    }catch(e){}
   }
   renderSlots();
+}
+
+/* ================= EXTRAS (для слайдів шаблону) ================= */
+function nextLessonText(){
+  try{
+    if(isC(selLesson)||!curTheme()) return PH('тема наступного заняття');
+    const s=curSubj(), ti=+selTheme.value, li=+selLesson.value, t=s.themes[ti];
+    if(t.lessons[li+1]) return `Тема ${t.name}. Заняття ${t.lessons[li+1].name}`;
+    const nt=s.themes[ti+1]; if(nt) return `Тема ${nt.name}`+(nt.lessons[0]?`. Заняття ${nt.lessons[0].name}`:'');
+  }catch(e){}
+  return PH('тема наступного заняття');
+}
+function basicExtras(d){
+  const lines=c=>c.split('\n').map(l=>noPh(l).replace(/^[–\-•▪]\s*/,'').trim()).filter(l=>l.length>2);
+  return {
+    checks:d.questions.map(x=>({ q:`Розкрийте зміст навчального питання «${noPh(x.q)}»?`, a:(lines(x.c).slice(0,2).join('; ')||PH('відповідь')) })),
+    evalCond:'усне опитування та перевірка практичних дій курсантів під час основної частини і в ході підбиття підсумків заняття',
+    evalCrit:'«відмінно» — дії та відповіді правильні й упевнені, без помилок; «добре» — з незначними помилками, виправленими самостійно; «задовільно» — з помилками, виправленими за допомогою керівника; «незадовільно» — завдання не виконано',
+    selfTask:`повторити матеріал заняття «${stripNum(noPh(d.lesson))||noPh(d.theme)}» за конспектом`,
+    next:nextLessonText(),
+    finalQ:'Які навчальні питання було розглянуто на занятті?',
+    finalA:d.questions.map((x,i)=>`${i+1}. ${noPh(x.q)}`).join('; ')
+  };
+}
+function sheetExtras(){ try{ return JSON.parse($('#xtra')?.dataset.json||'null'); }catch(e){ return null; } }
+function mergedExtras(d){
+  const b=basicExtras(d), x=sheetExtras()||{};
+  const checks=d.questions.map((q,i)=>{ const c=(x.checks||[])[i]; return c&&c.q?c:b.checks[i]; });
+  return {...b,...Object.fromEntries(Object.entries(x).filter(([k,v])=>v&&k!=='checks')),checks,next:x.next||b.next};
+}
+
+/* ================= IMPORT READY FILES ================= */
+function openParsed(p,label){
+  const num=+((p.time||'').match(/\d+/)||[0])[0];
+  const h = num && num<=8 ? num : Math.max(1,Math.round((num||45)/(+REQ.hourMin||45)));
+  const L={module:'',subject:p.subject,theme:p.theme,lesson:p.lesson,h,method:p.method,place:p.place,q:p.questions.map(x=>x.q),fromProgram:false};
+  const D={L,tm:timing(h),ai:false,goal:p.goal||basicGoal(L),materials:p.materials||basicMaterials(L),literature:p.literature||basicLiterature(),
+    questions:(p.questions.length?p.questions:[{q:PH('навчальне питання'),c:''}]).map(x=>({q:x.q,c:x.c||PH('короткий зміст')})),
+    final:p.final||(SAMPLE.doc&&SAMPLE.doc.final)||FINAL_TXT, timeText:p.time||''};
+  renderSheet(D);
+  if(window.innerWidth<980) $('#docbar').scrollIntoView({behavior:'smooth'});
+  toast(`✓ ${label}. Тепер — WORD або ▶ ПРЕЗЕНТАЦІЯ`,4500);
 }
 
 /* ================= PRESENTATION ================= */
@@ -808,9 +893,16 @@ async function exportPptx(){
   const b=$('#exPptx'), old=b.textContent; b.disabled=true;
   try{
     const d=readDoc(); let slides;
-    if(S.mode==='ai' && S.key && navigator.onLine){ b.textContent='▶ GEMINI ГОТУЄ СЛАЙДИ…'; try{ slides=await aiSlides(d); }catch(e){ toast('Gemini не відповів — слайди зібрано з конспекту'); } }
+    if(!(SAMPLE.ppt&&SAMPLE.ppt.fillable) && S.mode==='ai' && S.key && navigator.onLine){ b.textContent='▶ GEMINI ГОТУЄ СЛАЙДИ…'; try{ slides=await aiSlides(d); }catch(e){ toast('Gemini не відповів — слайди зібрано з конспекту'); } }
     if(!slides) slides=slidesFromDoc(d);
     b.textContent='▶ ЗБИРАЮ PPTX…';
+    if(SAMPLE.ppt && SAMPLE.ppt.fillable){
+      let x=mergedExtras(d);
+      if(S.mode==='ai' && S.key && navigator.onLine && !sheetExtras()){ b.textContent='▶ GEMINI ГОТУЄ ЗАПИТАННЯ…'; try{ x={...x,...await aiExtras(d)}; }catch(e){} }
+      const r=await TPL.fillPptx(SAMPLE.ppt.buf,d,x); download(r.blob,d.file+'.pptx');
+      toast(`✓ Презентація у шаблоні «${SAMPLE.ppt.name}»: ${d.file}.pptx · ${r.slides} слайдів`,4500);
+      b.disabled=false; b.textContent=old; return;
+    }
     if(SAMPLE.ppt) await pptxFromSample(SAMPLE.ppt,slides,d.file); else await pptxDefault(slides,d.file);
     toast(`✓ Презентація збережена: ${d.file}.pptx · ${slides.length} слайдів${SAMPLE.ppt?' · за зразком':''}`,4000);
   }catch(e){ toast('⚠ Презентація: '+e.message,6000); }
